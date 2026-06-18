@@ -1,0 +1,14 @@
+# Python caches
+**/__pycache__/
+*.pyc
+
+# AI agent logs
+src/debug_logs/
+
+# Asset and LaTeX artifacts
+assets/
+*supplementary_tables.tex
+
+# Output data CSVs
+*_summary.csv
+*_dynamics.csv
