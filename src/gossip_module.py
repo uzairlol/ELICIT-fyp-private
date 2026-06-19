@@ -1,3 +1,5 @@
+# gossip_module.py
+
 import parameters
 
 class GossipModule:

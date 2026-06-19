@@ -5,7 +5,7 @@
 
 
 """
-Oracle Module for SanctSim Phase 3.
+Oracle Module.
 
 The Oracle is a "Synthetic Heuristic Oracle", representing an environmental,
 rule-based welfare predictor used during democratic votes. It evaluates each

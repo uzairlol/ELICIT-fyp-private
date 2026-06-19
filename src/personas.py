@@ -1,3 +1,5 @@
+# personas.py
+
 def _get_persona_block(agent):
     """Return extra behavior constraints based on an agent's LLM persona."""
     persona = getattr(agent, 'llm_persona', 'DEFAULT')
