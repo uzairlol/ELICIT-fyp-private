@@ -1,8 +1,11 @@
 #response_parsing_utils.py
 
+import logging
 import re
 import parameters
 from utils import robust_json_loads
+
+logger = logging.getLogger(__name__)
 
 
 def _unwrap_response_data(response):
@@ -109,8 +112,8 @@ def _apply_allocations_helper(source_map, destination_map, tokens_remaining, cos
                     break
             rol_enabled = bool(getattr(parameters, 'RULE_OF_LAW_ENABLED', False))
             if rol_enabled and target_contrib is not None and target_contrib >= group_avg:
-                print(
-                    f"!!! RULE OF LAW BLOCKED: Agent {agent.agent_id} tried to punish Agent {target_agent_id}. "
+                logger.warning(
+                    f"RULE OF LAW BLOCKED: Agent {agent.agent_id} tried to punish Agent {target_agent_id}. "
                     f"Target gave {target_contrib} (Group Avg {group_avg:.2f}). Hallucinated Free-riding."
                 )
                 if hasattr(agent, 'rule_of_law_blocks'):

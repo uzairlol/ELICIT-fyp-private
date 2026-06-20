@@ -26,11 +26,14 @@ Dependencies:
 - Requires OllamaClient for local LLM interaction.
 """
 
+import logging
 import random
 import parameters
 import os
 import json
 from utils import robust_json_loads, uses_climate_budget
+
+logger = logging.getLogger(__name__)
 
 from prompt_generator import (
     construct_institution_choice_prompt,
@@ -451,20 +454,18 @@ Respond ONLY with a valid JSON object in this exact format:
                         'observations': str(parsed.get('observations', self.belief_state.get('observations', '')))
                     }
             self.log_debug(round_feedback.get('round_number', 0), "belief_update", prompt, response)
-            if getattr(parameters, 'VERBOSE', True):
-                round_number = round_feedback.get('round_number', '?')
-                strategy = self.belief_state.get('institutional_strategy', '')
-                trust_levels = self.belief_state.get('trust_levels', {}) or {}
-                trust_preview = ", ".join(sorted(map(str, trust_levels.keys()))[:3])
-                trust_suffix = f"; peers={trust_preview}" if trust_preview else ""
-                print(
-                    f"[Belief Update] Agent {self.agent_id} round {round_number}: "
-                    f"belief state updated (strategy={strategy!r}{trust_suffix})",
-                    flush=True,
-                )
+            round_number = round_feedback.get('round_number', '?')
+            strategy = self.belief_state.get('institutional_strategy', '')
+            trust_levels = self.belief_state.get('trust_levels', {}) or {}
+            trust_preview = ", ".join(sorted(map(str, trust_levels.keys()))[:3])
+            trust_suffix = f"; peers={trust_preview}" if trust_preview else ""
+            logger.debug(
+                f"[Belief Update] Agent {self.agent_id} round {round_number}: "
+                f"belief state updated (strategy={strategy!r}{trust_suffix})"
+            )
         except Exception as e:
             # On failure, keep the previous belief state unchanged
-            print(f"[Belief Update] Agent {self.agent_id} belief update failed: {e}")
+            logger.warning(f"[Belief Update] Agent {self.agent_id} belief update failed: {e}")
 
     def reset_for_new_round(self):
         """

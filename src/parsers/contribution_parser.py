@@ -1,7 +1,10 @@
+import logging
 import re
 import parameters
 from response_parsing_utils import _unwrap_response_data, _parse_int_safe, _make_parser_meta
 from utils import uses_climate_budget
+
+logger = logging.getLogger(__name__)
 
 
 def parse_contribution_response_v2(response, agent):
@@ -66,5 +69,5 @@ def parse_contribution_response_v2(response, agent):
             fallback_val = max(parameters.MIN_CONTRIBUTION, int(getattr(agent, 'wealth', parameters.ENDOWMENT_STAGE_1)) // 2)
         else:
             fallback_val = parameters.ENDOWMENT_STAGE_1 // 2
-        print(f"!!! CRITICAL: agent_{agent.agent_id} failed to parse contribution: {e}. Using fallback {fallback_val}")
+        logger.warning(f"agent_{agent.agent_id} failed to parse contribution: {e}. Using fallback {fallback_val}")
         return fallback_val, f"Lazy Fallback due to parsing error. Raw: {response[:100]}...", [], '', _make_parser_meta({}, expected_keys, True, f'Contribution parse exception: {e}')

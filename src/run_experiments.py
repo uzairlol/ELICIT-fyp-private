@@ -1,5 +1,6 @@
 #run_experiments.py
 
+import logging
 from pathlib import Path
 import argparse
 import os
@@ -10,6 +11,8 @@ src_dir = repo_root / "src"
 
 os.chdir(repo_root)
 sys.path.insert(0, str(src_dir))
+
+logger = logging.getLogger(__name__)
 
 import main
 import parameters
@@ -156,7 +159,7 @@ def run_simulation(
 
     try:
         mix_str = f" mixed={mixed_agent_counts}" if mixed_agent_counts else ""
-        print(f"\n=== RUN Batch={tagged_batch_name} seed={seed} agent_type={agent_type}{mix_str} ===")
+        logger.info(f"=== RUN Batch={tagged_batch_name} seed={seed} agent_type={agent_type}{mix_str} ===")
         main.main()
     finally:
         sys.argv = original_argv
@@ -164,7 +167,7 @@ def run_simulation(
 
 def run_standard_sweeps(include_ablations=True, include_mixed=True, full_only=False):
     if include_ablations:
-        print("Starting Ablation Sweeps...")
+        logger.info("Starting Ablation Sweeps...")
         for seed in ABLATION_SEEDS:
             if full_only:
                 # Only run Full ablation
@@ -176,10 +179,10 @@ def run_standard_sweeps(include_ablations=True, include_mixed=True, full_only=Fa
                 run_simulation("Voting", seed, tom_enabled=False, gossip_enabled=False, democracy_enabled=True, num_rounds=ABLATION_NUM_ROUNDS)
                 run_simulation("Full", seed, tom_enabled=True, gossip_enabled=True, democracy_enabled=True, num_rounds=ABLATION_NUM_ROUNDS)
     else:
-        print("Skipping Ablation Sweeps...")
+        logger.info("Skipping Ablation Sweeps...")
 
     if include_ablations and not full_only:
-        print("\nStarting Baseline Sweeps (Pure Random / Greedy)...")
+        logger.info("Starting Baseline Sweeps (Pure Random / Greedy)...")
         for baseline in BASELINE_AGENT_TYPES:
             for seed in ABLATION_SEEDS:
                 # Baselines don't need governance mechanisms enabled
@@ -193,10 +196,10 @@ def run_standard_sweeps(include_ablations=True, include_mixed=True, full_only=Fa
                     num_rounds=ABLATION_NUM_ROUNDS
                 )
     else:
-        print("\nSkipping Baseline Sweeps (Full-only mode active or --skip-ablations used)...")
+        logger.info("Skipping Baseline Sweeps (Full-only mode active or --skip-ablations used)...")
 
     if include_mixed:
-        print("\nStarting Mixed-Population Sweeps...")
+        logger.info("Starting Mixed-Population Sweeps...")
         for batch_name, mix_counts in MIXED_CONDITIONS:
             for seed in ABLATION_SEEDS:
                 # Mixed runs use the Full mechanism (ToM + Gossip + Voting).
@@ -211,7 +214,7 @@ def run_standard_sweeps(include_ablations=True, include_mixed=True, full_only=Fa
                     num_rounds=MAIN_NUM_ROUNDS
                 )
     else:
-        print("\nSkipping Mixed-Population Sweeps...")
+        logger.info("Skipping Mixed-Population Sweeps...")
 
 
 def run_quick_compare(seed):
@@ -222,7 +225,7 @@ def run_quick_compare(seed):
         ("Full_Mixed_LLM5_Random0_Greedy2", mixed_lookup["Full_Mixed_LLM5_Random0_Greedy2"]),
     ]
 
-    print(f"Starting Quick Compare mode with seed={seed}...")
+    logger.info(f"Starting Quick Compare mode with seed={seed}...")
     for batch_name, mix_counts in quick_runs:
         run_simulation(
             batch_name=batch_name,
@@ -236,7 +239,7 @@ def run_quick_compare(seed):
 
 
 def run_main_ldf_sweep(seeds):
-    print("Starting Main LDF Sweep (Full mechanism across all seeds)...")
+    logger.info("Starting Main LDF Sweep (Full mechanism across all seeds)...")
     for seed in seeds:
         run_simulation(
             batch_name="Full",
@@ -252,6 +255,9 @@ def run_main_ldf_sweep(seeds):
 def main_cli():
     global SEEDS, MAIN_SEEDS, ABLATION_SEEDS, NUM_ROUNDS, NUM_AGENTS, SCENARIO, MODEL, ENABLE_CLIMATE_SHOCKS, ENABLE_LDF, VERBOSE, TOTAL_RUNS, current_run
 
+    from main import setup_logging
+    setup_logging()
+
     args = _parse_args()
 
     SEEDS = args.seeds
@@ -265,6 +271,8 @@ def main_cli():
     ENABLE_CLIMATE_SHOCKS = bool(args.enable_climate_shocks)
     ENABLE_LDF = bool(args.enable_ldf)
     VERBOSE = not bool(args.quiet)
+    if args.quiet:
+        logging.getLogger().setLevel(logging.WARNING)
 
     # Stream output line-by-line in terminals so long runs stay visible.
     try:
@@ -284,7 +292,7 @@ def main_cli():
         ldf_counts = getattr(parameters, 'LDF_AGENT_GROUP_COUNTS', {}) or {}
         required_agents = int(ldf_counts.get('developed', 0)) + int(ldf_counts.get('developing', 0))
         if required_agents > 0 and NUM_AGENTS != required_agents:
-            print(
+            logger.info(
                 f"[LDF] Adjusting agents from {NUM_AGENTS} to {required_agents} "
                 f"to match configured developed/developing country counts."
             )
@@ -296,7 +304,7 @@ def main_cli():
     if args.quick_compare:
         quick_seed = SEEDS[0]
         TOTAL_RUNS = 3
-        print(
+        logger.info(
             f"Configuration: quick_compare=True, seed={quick_seed}, rounds={NUM_ROUNDS}, "
             f"agents={NUM_AGENTS}, model={MODEL}, scenario={SCENARIO}, "
             f"shocks={ENABLE_CLIMATE_SHOCKS}, ldf={ENABLE_LDF}, total_runs={TOTAL_RUNS}"
@@ -305,14 +313,14 @@ def main_cli():
     elif use_main_ldf_sweep:
         TOTAL_RUNS = len(SEEDS)
 
-        print(
+        logger.info(
             f"Configuration: quick_compare=False, seeds={SEEDS}, rounds={NUM_ROUNDS}, "
             f"agents={NUM_AGENTS}, model={MODEL}, scenario={SCENARIO}, "
             f"shocks={ENABLE_CLIMATE_SHOCKS}, ldf={ENABLE_LDF}, mode=main_only, total_runs={TOTAL_RUNS}"
         )
 
         if TOTAL_RUNS == 0:
-            print("No runs selected. Adjust flags and try again.")
+            logger.info("No runs selected. Adjust flags and try again.")
             return
 
         run_main_ldf_sweep(SEEDS)
@@ -321,19 +329,19 @@ def main_cli():
         include_mixed = not args.skip_mixed
         TOTAL_RUNS = _compute_total_runs(SEEDS, include_ablations, include_mixed, args.full_only)
 
-        print(
+        logger.info(
             f"Configuration: quick_compare=False, seeds={SEEDS}, rounds={NUM_ROUNDS}, "
             f"agents={NUM_AGENTS}, model={MODEL}, scenario={SCENARIO}, "
             f"shocks={ENABLE_CLIMATE_SHOCKS}, ldf={ENABLE_LDF}, mode=sweep_all, total_runs={TOTAL_RUNS}"
         )
 
         if TOTAL_RUNS == 0:
-            print("No runs selected. Adjust flags and try again.")
+            logger.info("No runs selected. Adjust flags and try again.")
             return
 
         run_standard_sweeps(include_ablations=include_ablations, include_mixed=include_mixed, full_only=args.full_only)
 
-    print("\nAll runs finished.")
+    logger.info("All runs finished.")
 
 
 if __name__ == "__main__":

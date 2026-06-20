@@ -19,11 +19,14 @@ The winning proposal and vote tallies are returned so `environment.py` can
 log them in the round data / results JSON.
 """
 
+import logging
 import parameters
 import random
 import json
 import re
 from utils import robust_json_loads
+
+logger = logging.getLogger(__name__)
 
 # Only these parameters may be changed by democratic vote.
 # This prevents agents from corrupting SEED, NUM_AGENTS, NUM_ROUNDS, etc.
@@ -77,13 +80,13 @@ class DemocracyModule:
               'winning_proposal': the winning proposal dict (or None)
               'applied'        : bool — whether the change was applied
         """
-        print(f"\n--- Constitutional Moment (Round {round_number}) ---")
+        logger.info(f"--- Constitutional Moment (Round {round_number}) ---")
 
         # Phase A: Collect proposals from every agent
         proposals = self._collect_proposals(agents, round_number)
 
         if not proposals:
-            print("No valid proposals received. Skipping vote.")
+            logger.info("No valid proposals received. Skipping vote.")
             return {
                 'proposals': [],
                 'votes': {},
@@ -98,18 +101,18 @@ class DemocracyModule:
         # Tally
         winning_proposal, tally = self._tally_votes(proposals, votes)
 
-        print(f"Vote tally: {tally}")
+        logger.info(f"Vote tally: {tally}")
 
         # Apply winning rule
         applied = False
         if winning_proposal:
             applied = self._apply_rule(winning_proposal)
             if applied:
-                print(
+                logger.info(
                     f"Rule applied: {winning_proposal['rule']} → {winning_proposal['new_value']}"
                 )
 
-        print(f"--- End of Constitutional Session ---\n")
+        logger.info(f"--- End of Constitutional Session ---")
 
         return {
             'proposals': proposals,
@@ -188,7 +191,7 @@ class DemocracyModule:
                     proposals.append(validated)
                     seen_proposals.add(proposal_key)
                     agent.explored_params.add(rule) # Mark as explored
-                    print(
+                    logger.info(
                         f"Agent {agent.agent_id} proposes: "
                         f"{rule} → {new_val}  (reason: {validated.get('reason','')[:60]})"
                     )
@@ -286,7 +289,7 @@ Respond ONLY with valid JSON in this exact format:
             vote = self._get_vote(agent, proposals_str, len(proposals), round_number)
             if vote is not None:
                 votes[agent.agent_id] = vote
-                print(f"Agent {agent.agent_id} votes for proposal [{vote}]")
+                logger.info(f"Agent {agent.agent_id} votes for proposal [{vote}]")
 
         return votes
 

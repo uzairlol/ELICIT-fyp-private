@@ -1,6 +1,9 @@
+import logging
 import re
 import parameters
 from response_parsing_utils import _unwrap_response_data, _apply_allocations_helper, _make_parser_meta, deanonymize_reasoning
+
+logger = logging.getLogger(__name__)
 
 
 def parse_punishment_response(response, group_state, agent):
@@ -84,5 +87,5 @@ def parse_punishment_response(response, group_state, agent):
         return punishment_allocations, reward_allocations, reasoning, deanonymized_reasoning, justifications, facts_used, deepseek_think, parser_meta
 
     except Exception as e:
-        print(f"Error parsing punishment response: {e}")
+        logger.warning(f"Error parsing punishment response: {e}")
         return {}, {}, 'Parsing failed', 'Parsing failed', {}, [], '', _make_parser_meta({}, expected_keys, True, f'Punishment parse exception: {e}')

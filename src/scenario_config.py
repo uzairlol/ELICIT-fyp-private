@@ -4,6 +4,10 @@
 Configuration maps for grounding the simulation into real-world scenarios.
 """
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 SCENARIOS = {
     "abstract": {
         "game_name": "public goods game",
@@ -61,6 +65,6 @@ def get_scenario_config(scenario_name: str) -> dict:
         scenario_key = "ldf"
 
     if scenario_key not in SCENARIOS:
-        print(f"[{scenario_name}] scenario not found. Defaulting to 'abstract'.")
+        logger.warning(f"[{scenario_name}] scenario not found. Defaulting to 'abstract'.")
         return SCENARIOS["abstract"]
     return SCENARIOS[scenario_key]

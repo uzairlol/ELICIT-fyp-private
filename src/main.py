@@ -1,6 +1,7 @@
 #main.py
 
 import argparse
+import logging
 import os
 import glob
 import random
@@ -9,6 +10,17 @@ from agent import Agent
 from environment import Environment
 import parameters
 from ollama_client import OllamaClient
+
+logger = logging.getLogger(__name__)
+
+
+def setup_logging():
+    """Configure root logger with a timestamped format."""
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
 
 
 def clear_debug_logs():
@@ -24,10 +36,12 @@ def clear_debug_logs():
             except OSError:
                 pass
         if files:
-            print(f"Cleared {len(files)} old debug log(s) from '{log_dir}'.")
+            logger.info(f"Cleared {len(files)} old debug log(s) from '{log_dir}'.")
 
 
 def main():
+    setup_logging()
+
     parser = argparse.ArgumentParser(
         description="Run the public goods game simulation with local Ollama (Llama 3.1 8b)."
     )
@@ -65,7 +79,7 @@ def main():
         ldf_counts = getattr(parameters, 'LDF_AGENT_GROUP_COUNTS', {}) or {}
         required_agents = int(ldf_counts.get('developed', 0)) + int(ldf_counts.get('developing', 0))
         if required_agents > 0 and parameters.NUM_AGENTS != required_agents:
-            print(
+            logger.info(
                 f"[LDF] Adjusting num_agents from {parameters.NUM_AGENTS} to {required_agents} "
                 f"to match configured developed/developing country counts."
             )
@@ -77,24 +91,26 @@ def main():
     # Clear previous debug logs so each run is isolated
     clear_debug_logs()
 
-    print(f"--- Initializing Simulation ---")
-    print(f"Batch: {getattr(parameters, 'BATCH_NAME', 'Default')}")
-    print(f"Scenario: {parameters.SCENARIO}")
-    print(f"Agent Type: {parameters.AGENT_TYPE}")
-    print(f"Modules: ToM={'[ON]' if parameters.TOM_ENABLED else '[OFF]'}, "
-          f"Gossip={'[ON]' if parameters.GOSSIP_ENABLED else '[OFF]'}, "
-          f"Voting={'[ON]' if parameters.DEMOCRACY_ENABLED else '[OFF]'}")
-    print(
+    logger.info("--- Initializing Simulation ---")
+    logger.info(f"Batch: {getattr(parameters, 'BATCH_NAME', 'Default')}")
+    logger.info(f"Scenario: {parameters.SCENARIO}")
+    logger.info(f"Agent Type: {parameters.AGENT_TYPE}")
+    logger.info(
+        f"Modules: ToM={'[ON]' if parameters.TOM_ENABLED else '[OFF]'}, "
+        f"Gossip={'[ON]' if parameters.GOSSIP_ENABLED else '[OFF]'}, "
+        f"Voting={'[ON]' if parameters.DEMOCRACY_ENABLED else '[OFF]'}"
+    )
+    logger.info(
         f"Climate modules: Shocks={'[ON]' if parameters.CLIMATE_SHOCK_ENABLED else '[OFF]'}, "
         f"LDF={'[ON]' if parameters.LDF_ENABLED else '[OFF]'}"
     )
-    print(f"Model: {parameters.LLM_MODEL}")
-    print(f"Agents: {parameters.NUM_AGENTS}")
-    print(f"Rounds: {parameters.NUM_ROUNDS}")
-    print(f"Seed: {parameters.SEED}")
+    logger.info(f"Model: {parameters.LLM_MODEL}")
+    logger.info(f"Agents: {parameters.NUM_AGENTS}")
+    logger.info(f"Rounds: {parameters.NUM_ROUNDS}")
+    logger.info(f"Seed: {parameters.SEED}")
     if getattr(parameters, 'MIXED_AGENT_COUNTS', None):
-        print(f"Mixed Agent Counts: {parameters.MIXED_AGENT_COUNTS}")
-    print(f"-------------------------------")
+        logger.info(f"Mixed Agent Counts: {parameters.MIXED_AGENT_COUNTS}")
+    logger.info("-------------------------------")
 
     # Initialize the local Ollama client
     api_client = OllamaClient(model_name=parameters.LLM_MODEL, base_url=parameters.LLM_BASE_URL)
@@ -251,8 +267,7 @@ def main():
             num_rounds=parameters.NUM_ROUNDS
         )
 
-    # Confirm local usage (cost is always $0 for Ollama)
-    print(f"\nTotal LLM Cost (Local {parameters.LLM_MODEL}): ${api_client.get_total_cost():.6f}")
+    logger.info(f"Total LLM Cost (Local {parameters.LLM_MODEL}): ${api_client.get_total_cost():.6f}")
 
 
 if __name__ == "__main__":

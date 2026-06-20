@@ -9,8 +9,11 @@ Both institutions manage the grouping of agents and their interactions within th
 - The Sanction-Free Institution does not have mechanisms for punishment or reward.
 """
 
+import logging
 import parameters
 import concurrent.futures
+
+logger = logging.getLogger(__name__)
 
 class Institution:
     def __init__(self):
@@ -61,7 +64,7 @@ class Institution:
             for future in concurrent.futures.as_completed(futures):
                 agent = futures[future]
                 future.result()
-                print(f"Agent {agent.agent_id} contributed {agent.contribution} tokens")
+                logger.info(f"Agent {agent.agent_id} contributed {agent.contribution} tokens")
 
         for agent in self.members:
             self.total_contribution += agent.contribution
@@ -84,7 +87,7 @@ class Institution:
             # Update the agent's payoff; Stage 1 payoff is added after Stage 2
             self.stage1_payoffs[agent.agent_id] = stage1_payoff
             # The payoff will be updated later after Stage 2 in the environment
-            print(f"Agent {agent.agent_id} earned {stage1_payoff} tokens in Stage 1") 
+            logger.info(f"Agent {agent.agent_id} earned {stage1_payoff} tokens in Stage 1")
 
     def get_group_state(self, requesting_agent):
         """
@@ -157,8 +160,7 @@ class SanctioningInstitution(Institution):
                         self.reward_matrix[rewarded_agent_id] = {}
                     self.reward_matrix[rewarded_agent_id][agent.agent_id] = tokens
 
-                if parameters.VERBOSE:
-                    print(f"Agent {agent.agent_id} assigned punishments: {punishment_allocations}. Reasoning: \"{agent.punishment_reasoning[:150]}...\"")
+                logger.info(f"Agent {agent.agent_id} assigned punishments: {punishment_allocations}. Reasoning: \"{agent.punishment_reasoning[:150]}...\"")
 
     def apply_punishments_and_rewards(self):
         """

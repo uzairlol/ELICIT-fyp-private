@@ -3,10 +3,13 @@
 import random
 import json
 import os
+import logging
 import concurrent.futures
 import statistics
 from datetime import datetime
 import parameters
+
+logger = logging.getLogger(__name__)
 from agent import Agent
 from institution import SanctioningInstitution, SanctionFreeInstitution
 from tom_module import TomModule
@@ -50,7 +53,7 @@ class Environment:
         for round_number in range(1, parameters.NUM_ROUNDS + 1):
             self.current_round = round_number
             progress_str = f" [Run {getattr(parameters, 'CURRENT_RUN', '?')}/{getattr(parameters, 'TOTAL_RUNS', '?')}]" if hasattr(parameters, 'CURRENT_RUN') else ""
-            print(f"\n{progress_str} Starting Round {self.current_round}/{parameters.NUM_ROUNDS}")
+            logger.info(f"{progress_str} Starting Round {self.current_round}/{parameters.NUM_ROUNDS}")
             self.run_round()
 
             # Phase 2: Theory of Mind audit after every round
@@ -117,19 +120,17 @@ class Environment:
             for agent in self.agents:
                 agent.recent_gossip = self.gossip_module.get_gossip_for_agent(agent)
 
-        if parameters.VERBOSE:
-            rep_str = ", ".join(
-                f"Agent {a.agent_id}: {a.reputation:.1f}"
-                for a in self.agents
-            )
-            print(f"\n[ToM] Reputations after Round {round_number}: [{rep_str}]")
-            
-            # Print Global Gossip Bulletin
-            if self.gossip_module and self.gossip_module.gossip_bulletin:
-                print(f"\n{'='*20} SOCIAL GOSSIP BULLETIN {'='*20}")
-                for gossip in self.gossip_module.gossip_bulletin:
-                    print(f"Agent {gossip['source']} on Agent {gossip['target']}: \"{gossip['reasoning'][:150]}...\"")
-                print(f"{'='*64}\n")
+        rep_str = ", ".join(
+            f"Agent {a.agent_id}: {a.reputation:.1f}"
+            for a in self.agents
+        )
+        logger.info(f"[ToM] Reputations after Round {round_number}: [{rep_str}]")
+        
+        if self.gossip_module and self.gossip_module.gossip_bulletin:
+            logger.info(f"{'='*20} SOCIAL GOSSIP BULLETIN {'='*20}")
+            for gossip in self.gossip_module.gossip_bulletin:
+                logger.info(f"Agent {gossip['source']} on Agent {gossip['target']}: \"{gossip['reasoning'][:150]}...\"")
+            logger.info(f"{'='*64}")
 
     def run_round(self):
         """
@@ -141,7 +142,7 @@ class Environment:
 
         # Agents choose institutions
         def setup_agent(agent):
-            print(f"Agent {agent} started")
+            logger.debug(f"Agent {agent} started")
             agent.reset_for_new_round()
             scenario_name = str(getattr(parameters, 'SCENARIO', '')).lower()
             if scenario_name == 'climate':
@@ -184,8 +185,7 @@ class Environment:
                     self.sfi.add_member(agent)
                     agent.current_group = self.sfi
                 
-                if parameters.VERBOSE:
-                    print(f"Agent {agent.agent_id} chose {agent.institution_choice}. Reasoning: \"{agent.institution_reasoning[:150]}...\"")
+                logger.info(f"Agent {agent.agent_id} chose {agent.institution_choice}. Reasoning: \"{agent.institution_reasoning[:150]}...\"")
 
         # Collect contributions in each institution
         self.si.collect_contributions()
@@ -206,8 +206,7 @@ class Environment:
             for agent_id, bonus in subsidies.items():
                 agent = next(a for a in self.agents if a.agent_id == agent_id)
                 agent.last_subsidy = bonus
-                if parameters.VERBOSE:
-                    print(f"Agent {agent_id} received subsidy: +{bonus} tokens")
+                logger.info(f"Agent {agent_id} received subsidy: +{bonus} tokens")
 
         # Climate shocks and Loss & Damage Fund (optional; disabled by default).
         self._apply_climate_shock_and_ldf()
@@ -331,10 +330,9 @@ class Environment:
             agent.wealth += (stage2_payoff + subsidy + ldf_transfer - climate_damage)
             agent.wealth = max(0.0, agent.wealth)
 
-            if parameters.VERBOSE:
-                payoff_details = f"S1: {stage1_payoff:.1f}, S2: {stage2_payoff:.1f}, LDF: {ldf_transfer:.1f}, Damage: {climate_damage:.1f}"
-                print(f"Agent {agent.agent_id} in {agent.institution_choice} (Payoff: {agent.round_payoff:.2f} | {payoff_details})")
-                print(f"  - LLM Reasoning: {agent.contribution_reasoning[:120]}...")
+            payoff_details = f"S1: {stage1_payoff:.1f}, S2: {stage2_payoff:.1f}, LDF: {ldf_transfer:.1f}, Damage: {climate_damage:.1f}"
+            logger.info(f"Agent {agent.agent_id} in {agent.institution_choice} (Payoff: {agent.round_payoff:.2f} | {payoff_details})")
+            logger.debug(f"  - LLM Reasoning: {agent.contribution_reasoning[:120]}...")
 
     def _compute_gini(self, values):
         """Gini coefficient for non-negative values."""
@@ -539,7 +537,7 @@ class Environment:
                     try:
                         future.result()
                     except Exception as e:
-                        print(f"[Belief Update] Agent {agent.agent_id} failed: {e}")
+                        logger.warning(f"[Belief Update] Agent {agent.agent_id} failed: {e}")
 
             # Snapshot the updated belief states into round_data for results JSON
             for agent in self.agents:
@@ -573,4 +571,4 @@ class Environment:
         with open(filepath, 'w') as f:
             json.dump(self.results, f, indent=4)
 
-        print(f"\nSimulation results saved to '{filepath}'.")
+        logger.info(f"Simulation results saved to '{filepath}'.")
