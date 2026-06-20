@@ -12,3 +12,6 @@ assets/
 # Output data CSVs
 *_summary.csv
 *_dynamics.csv
+
+# Log files
+*.log
