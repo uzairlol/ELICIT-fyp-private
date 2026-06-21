@@ -21,11 +21,11 @@ def setup_logging():
     debug_log_path = os.path.join(log_dir, 'debug.log')
     
     fh, ch = logging.FileHandler(debug_log_path), logging.StreamHandler()
-    fh.setLevel(logging.DEBUG)
+    fh.setLevel(logging.INFO)
     ch.setLevel(logging.INFO)
     
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         datefmt="%H:%M:%S",
         handlers=[fh, ch],
