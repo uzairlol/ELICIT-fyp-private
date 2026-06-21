@@ -137,15 +137,15 @@ def _build_stage0_card(agent, round_number, sc):
             f"({s2_budget} {sc['currency_name']}, calculated as 5% of your wealth, or at least {parameters.ENDOWMENT_STAGE_2} {sc['currency_name']}) "
             f"directly from your OWN wealth."
         )
-        si_payoff_formula = f"`stage1_payoff - tokens_you_spend + rewards_you_receive - punishments_you_receive` (costs are deducted directly from your wealth)"
+        si_payoff_formula = f"`stage1_payoff - amount_you_spend + rewards_you_receive - punishments_you_receive` (costs are deducted directly from your wealth)"
         key_tradeoff_desc = (
-            f"The risk is that peers in SI may punish you if they think you under-contributed. Any tokens you spend "
+            f"The risk is that peers in SI may punish you if they think you under-contributed. Any {sc['currency_name']} you spend "
             f"or receive as punishment directly reduce your wealth, while rewards increase it."
         )
         unspent_explanation = "In climate mode, you simply spend 0 from your wealth."
     else:
         si_endowment_desc = f"You receive a FREE Stage 2 endowment of {s2_budget} {sc['currency_name']} just for joining SI (SFI members get nothing from Stage 2)."
-        si_payoff_formula = f"`stage1_payoff + ({s2_budget} - tokens_you_spend) + rewards_you_receive - punishments_you_receive`"
+        si_payoff_formula = f"`stage1_payoff + ({s2_budget} - amount_you_spend) + rewards_you_receive - punishments_you_receive`"
         key_tradeoff_desc = (
             f"SI gives you {s2_budget} {sc['currency_name']} extra per round that SFI does not. The risk is that peers in SI "
             f"may punish you if they think you under-contributed, reducing your net Stage 2 payoff."
@@ -278,9 +278,9 @@ def _build_stage2_card(agent, group_state, sc, ordered_others=None):
 **Decision Card — Stage 2 / Punishment & Reward Allocation**
 - Your institution: {getattr(agent, 'institution_choice', 'unknown')}
 - Stage 2 budget: {s2_budget} {sc['currency_name']} TOTAL across all targets combined (punishments + rewards share this pool){funding_info}
-- Max tokens assignable to any single target: {max_punishment} {sc['currency_name']}
-- Punishment effect / cost: -{parameters.PUNISHMENT_EFFECT} / {parameters.PUNISHMENT_COST} {sc['currency_name']} per token
-- Reward effect / cost: +{parameters.REWARD_EFFECT} / {parameters.REWARD_COST} {sc['currency_name']} per token
+- Max amount assignable to any single target: {max_punishment} {sc['currency_name']}
+- Punishment effect / cost: -{parameters.PUNISHMENT_EFFECT} / {parameters.PUNISHMENT_COST} {sc['currency_name']} per unit
+- Reward effect / cost: +{parameters.REWARD_EFFECT} / {parameters.REWARD_COST} {sc['currency_name']} per unit
 - Group average contribution this round: {avg_contrib:.2f} {sc['currency_name']} — agents below this are free-riding
 - Target labels (use exactly): {target_label_block}
 - Targets are listed worst free-rider first — prioritize punishing agents with the lowest contributions and mismatched stated intent.
@@ -288,7 +288,7 @@ def _build_stage2_card(agent, group_state, sc, ordered_others=None):
 Current-round targets (agents marked [FREE-RIDER] contributed below the group average):
 {targets_block}
 
-Allocate integer token counts only. Include every listed target exactly once in "punishments" (use 0 if not punishing). Rewards are optional.
+Allocate integer amounts only. Include every listed target exactly once in "punishments" (use 0 if not punishing). Rewards are optional.
 """
 
     return card, target_labels
@@ -318,10 +318,10 @@ def get_past_actions_string(agent):
         round_info = f"Round {entry['round_number']}: " \
                      f"Institution: {entry['institution_choice']}, " \
                      f"Contribution: {entry['contribution']}, " \
-                     f"Assigned {punishment_name} tokens: {assigned_p_tokens}, " \
-                     f"Assigned {reward_name} tokens: {assigned_r_tokens}, " \
-                     f"Received {punishment_name} tokens: {received_p_tokens}, " \
-                     f"Received {reward_name} tokens: {received_r_tokens}, " \
+                     f"Assigned {punishment_name}: {assigned_p_tokens}, " \
+                     f"Assigned {reward_name}: {assigned_r_tokens}, " \
+                     f"Received {punishment_name}: {received_p_tokens}, " \
+                     f"Received {reward_name}: {received_r_tokens}, " \
                      f"Stage 1 Payoff: {entry.get('stage1_payoff', 0):.2f}, " \
                      f"Stage 2 Payoff: {entry.get('stage2_payoff', 0):.2f}, " \
                      f"Total Round Payoff: {entry.get('payoff', 0):.2f} {currency_name}, " \
@@ -390,8 +390,8 @@ def _append_belief_state(prompt, agent, sc):
                 f"Institution: {entry.get('institution_choice', 'Unknown')}, "
                 f"Budget/Wealth: {entry.get('wealth', 0.0):.2f} {sc['currency_name']}, "
                 f"Contributed {entry['contribution']} {sc['currency_name']}, "
-                f"Received {sc['punishment_name']} tokens: {received_p_tokens}, "
-                f"Received {sc['reward_name']} tokens: {received_r_tokens}, "
+                f"Received {sc['punishment_name']}: {received_p_tokens}, "
+                f"Received {sc['reward_name']}: {received_r_tokens}, "
                 f"Total Round Payoff: {entry.get('total_round_payoff', 0):.2f}"
             )
         prompt += "\n\nUse your Internal Beliefs above for long-term context and the previous round data for immediate situational awareness."
@@ -438,7 +438,7 @@ def _append_climate_role_guidance(prompt, agent):
 **LDF and Shock Context Reminder:**
 - Climate shocks are deterministic and can create asymmetric losses.
 - The Loss & Damage Fund can shift net outcomes through contributions and payouts.
-- **CRITICAL:** Any tokens you choose to contribute to the public good (Emissions Reduction) are ALSO deposited into the LDF pool to fund disaster payouts.
+- **CRITICAL:** Any {sc['currency_name']} you choose to contribute to the public good (Emissions Reduction) are ALSO deposited into the LDF pool to fund disaster payouts.
 - Use these mechanisms as decision context, not as fixed rules that force a single choice.
 """
     return prompt
@@ -482,7 +482,7 @@ def construct_contribution_prompt(agent, group_state):
     prompt = _append_belief_state(prompt, agent, sc)
     prompt = _append_gossip(prompt, agent)
 
-    prompt += "\n\nDecide how many tokens to contribute. Use the card above and return one integer value within the allowed budget. Keep reasoning concise."
+    prompt += "\n\nDecide how much to contribute. Use the card above and return one integer value within the allowed budget. Keep reasoning concise."
     prompt += _json_response_block("Contribution Choice")
 
     if parameters.CURIOSITY_ENABLED and parameters.CURIOSITY_BONUS_PROMPT:
@@ -539,8 +539,8 @@ def construct_punishment_prompt(agent, group_state):
 - "punishments" MUST include ALL {len(target_labels)} target labels as keys. Use 0 for targets you are not punishing.
 - "rewards" is OPTIONAL — omit it or use {{}} if you are not rewarding anyone. If present, only include targets with a positive amount.
 - "justifications" is OPTIONAL — if included, only justify targets you punish or reward with a positive amount.
-- Use integer token counts only (never negative).
-- Your total spend (punishment tokens × {parameters.PUNISHMENT_COST} + reward tokens × {parameters.REWARD_COST}) MUST NOT exceed {s2_budget}.
+- Use integer amounts only (never negative).
+- Your total spend (punishment amount × {parameters.PUNISHMENT_COST} + reward amount × {parameters.REWARD_COST}) MUST NOT exceed {s2_budget}.
 - Do not include yourself in either object.
 - Focus punishments on free-riders: agents who contributed below the group average or whose stated intent does not match their action.
 

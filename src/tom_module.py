@@ -17,6 +17,7 @@ future LLM prompts, closing the loop between social judgement and behaviour.
 import json
 import re
 import parameters
+from scenario_config import get_scenario_config
 
 
 class TomModule:
@@ -75,6 +76,8 @@ class TomModule:
         stated_intent = target.contribution_reasoning or "No reasoning provided."
         actual_contribution = target.contribution
         endowment = target.get_stage1_contribution_cap() if hasattr(target, 'get_stage1_contribution_cap') else parameters.ENDOWMENT_STAGE_1
+        sc = get_scenario_config(parameters.SCENARIO)
+        currency_name = sc['currency_name']
 
         prompt = f"""You are Agent {evaluator.agent_id} in a public goods experiment (Round {round_number}).
 
@@ -84,7 +87,7 @@ You are auditing the behavior of another participant (Agent {target.agent_id}) t
 "{stated_intent}"
 
 **What they actually contributed:**
-{actual_contribution} out of {endowment} tokens.
+{actual_contribution} out of {endowment} {currency_name}.
 
 **Your task:**
 Based on alignment between their stated reasoning and their actual action:
