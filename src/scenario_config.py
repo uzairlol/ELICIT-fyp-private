@@ -26,7 +26,7 @@ SCENARIOS = {
     
     "ldf": {
         "game_name": "Global Climate Change Summit",
-        "currency_name": "million dollars (GDP)",
+        "currency_name": "million USD",
         "account_name": "national treasury",
         "project_name": "Global Emissions Reduction Fund",
         "sfi_name": "Group A (Non-Binding Climate Agreement)",

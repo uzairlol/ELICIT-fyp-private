@@ -17,6 +17,7 @@ from democracy_module import DemocracyModule
 from oracle import Oracle
 from subsidy import SubsidyModule
 from loss_damage_fund import LossDamageFund
+from scenario_config import get_scenario_config
 if parameters.GOSSIP_ENABLED:
     from gossip_module import GossipModule
 
@@ -206,7 +207,8 @@ class Environment:
             for agent_id, bonus in subsidies.items():
                 agent = next(a for a in self.agents if a.agent_id == agent_id)
                 agent.last_subsidy = bonus
-                logger.info(f"Agent {agent_id} received subsidy: +{bonus}")
+                currency = get_scenario_config(parameters.SCENARIO)['currency_name']
+                logger.info(f"Agent {agent_id} received subsidy: +{bonus} {currency}")
 
         # Climate shocks and Loss & Damage Fund (optional; disabled by default).
         self._apply_climate_shock_and_ldf()

@@ -12,6 +12,7 @@ Both institutions manage the grouping of agents and their interactions within th
 import logging
 import parameters
 import concurrent.futures
+from scenario_config import get_scenario_config
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,8 @@ class Institution:
             for future in concurrent.futures.as_completed(futures):
                 agent = futures[future]
                 future.result()
-                logger.info(f"Agent {agent.agent_id} contributed {agent.contribution}")
+                currency = get_scenario_config(parameters.SCENARIO)['currency_name']
+                logger.info(f"Agent {agent.agent_id} contributed {agent.contribution} {currency}")
 
         for agent in self.members:
             self.total_contribution += agent.contribution
@@ -87,7 +89,8 @@ class Institution:
             # Update the agent's payoff; Stage 1 payoff is added after Stage 2
             self.stage1_payoffs[agent.agent_id] = stage1_payoff
             # The payoff will be updated later after Stage 2 in the environment
-            logger.info(f"Agent {agent.agent_id} earned {stage1_payoff} in Stage 1")
+            currency = get_scenario_config(parameters.SCENARIO)['currency_name']
+            logger.info(f"Agent {agent.agent_id} earned {stage1_payoff} {currency} in Stage 1")
 
     def get_group_state(self, requesting_agent):
         """
