@@ -215,9 +215,9 @@ class DemocracyModule:
         if not isinstance(current, (int, float)):
             return None
             
-        # Ensure correct type
+        # Ensure correct type (safely convert string representations of floats to int if needed)
         try:
-            new_val = type(current)(new_val)
+            new_val = type(current)(float(new_val))
         except (ValueError, TypeError):
             return None
             

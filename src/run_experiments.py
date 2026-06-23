@@ -115,6 +115,9 @@ def run_simulation(
     mixed_agent_counts=None,
     num_rounds=None,
 ):
+    import importlib
+    importlib.reload(parameters)
+
     global current_run
     current_run += 1
     parameters.CURRENT_RUN = current_run
