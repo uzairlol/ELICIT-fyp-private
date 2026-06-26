@@ -20,6 +20,11 @@ LLM_MODEL = "llama3.1:8b"
 LLM_BASE_URL = "http://localhost:11434/v1"
 OLLAMA_REQUEST_TIMEOUT_SECONDS = 3000.0
 LLM_MAX_CONCURRENCY = 2
+# Ollama runtime options forwarded on every request (native + OpenAI-compatible API).
+# num_gpu: -1 keeps all layers on GPU when VRAM allows; lower values offload to system RAM.
+# num_ctx: KV-cache reservation — set close to your longest prompt, not higher than needed.
+OLLAMA_NUM_GPU_LAYERS = -1
+OLLAMA_NUM_CTX = 4096
 
 # --- Initial Endowments ---
 INITIAL_TOKENS = 1000    # Starting tokens per agent
