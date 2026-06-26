@@ -1,11 +1,15 @@
 #ollama_client.py
 
+import logging
+import os
 import threading
 import backoff
 import json
 import urllib.request
 from openai import OpenAI, OpenAIError
 import parameters
+
+logger = logging.getLogger(__name__)
 
 
 def _is_reasoning_model(model_name):
@@ -16,7 +20,7 @@ def _is_reasoning_model(model_name):
 def _ollama_runtime_options(max_tokens):
     """Build Ollama option dict shared across HTTP and OpenAI-compatible calls."""
     return {
-        "num_gpu": int(getattr(parameters, 'OLLAMA_NUM_GPU_LAYERS', -1)),
+        "num_gpu": int(getattr(parameters, 'OLLAMA_NUM_GPU', 1)),
         "num_ctx": int(getattr(parameters, 'OLLAMA_NUM_CTX', 4096)),
         "num_predict": int(max_tokens),
         "seed": int(getattr(parameters, 'SEED', 0)),
@@ -40,9 +44,17 @@ class OllamaClient:
         self.model_name = model_name
         self.deployment_name = model_name
         self.total_cost = 0.0
-        # Cap in-flight requests so Ollama does not open more parallel contexts than configured.
-        max_inflight = max(1, int(getattr(parameters, 'LLM_MAX_CONCURRENCY', 1)))
-        self._request_semaphore = threading.BoundedSemaphore(max_inflight)
+
+        parallel = max(1, int(getattr(parameters, 'OLLAMA_NUM_PARALLEL', 1)))
+        os.environ.setdefault("OLLAMA_NUM_PARALLEL", str(parallel))
+        logger.info(
+            f"Ollama GPU options: num_gpu={getattr(parameters, 'OLLAMA_NUM_GPU', 1)}, "
+            f"num_ctx={getattr(parameters, 'OLLAMA_NUM_CTX', 4096)}, "
+            f"OLLAMA_NUM_PARALLEL={parallel} "
+            f"(restart the Ollama server if it was already running)"
+        )
+
+        self._request_semaphore = threading.BoundedSemaphore(parallel)
 
     @backoff.on_exception(backoff.expo, Exception, max_tries=5)
     def send_request(self, model_name, prompt, max_tokens=768, temperature=0.7, top_p=1.0, response_format=None, **kwargs):
@@ -101,6 +113,7 @@ class OllamaClient:
         options.update({
             "temperature": temperature,
             "top_p": top_p,
+            "num_predict": min(max_tokens, 768),
         })
         payload = {
             "model": self.model_name,

@@ -52,7 +52,7 @@ class TomModule:
         response = self.api_client.send_request(
             model_name=self.api_client.deployment_name,
             prompt=prompt,
-            max_tokens=self._batch_max_tokens(len(targets)),
+            max_tokens=768,
             temperature=0.3,
             response_format={"type": "json_object"},
         )
@@ -69,7 +69,7 @@ class TomModule:
             repair_response = self.api_client.send_request(
                 model_name=self.api_client.deployment_name,
                 prompt=repair_prompt,
-                max_tokens=self._batch_max_tokens(len(targets)),
+                max_tokens=768,
                 temperature=0.3,
                 response_format={"type": "json_object"},
             )
@@ -101,11 +101,6 @@ class TomModule:
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
-
-    @staticmethod
-    def _batch_max_tokens(num_targets):
-        # ~120 tokens per peer (score + short reasoning) plus JSON overhead.
-        return min(2048, max(512, num_targets * 140 + 128))
 
     @staticmethod
     def _truncate(text, limit=180):
