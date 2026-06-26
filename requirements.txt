@@ -3,3 +3,4 @@ backoff>=2.2.1
 matplotlib
 numpy
 pandas
+wordcloud

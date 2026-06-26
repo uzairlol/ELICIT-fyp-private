@@ -16,3 +16,6 @@ assets/
 # Log files
 *.log
 debug.log
+
+# Simulation plots and figures
+figures/
