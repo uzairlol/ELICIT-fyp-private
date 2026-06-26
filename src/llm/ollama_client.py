@@ -7,7 +7,7 @@ import backoff
 import json
 import urllib.request
 from openai import OpenAI, OpenAIError
-import parameters
+from core import parameters
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,6 @@
 # loss_damage_fund.py
 
-import parameters
+from core import parameters
 
 
 class LossDamageFund:

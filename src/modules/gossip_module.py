@@ -1,6 +1,6 @@
 # gossip_module.py
 
-import parameters
+from core import parameters
 
 class GossipModule:
     """

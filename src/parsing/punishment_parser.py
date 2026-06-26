@@ -1,7 +1,7 @@
 import logging
 import re
-import parameters
-from response_parsing_utils import _unwrap_response_data, _apply_stage2_allocations, _make_parser_meta, deanonymize_reasoning
+from core import parameters
+from parsing.response_parsing_utils import _unwrap_response_data, _apply_stage2_allocations, _make_parser_meta, deanonymize_reasoning
 
 logger = logging.getLogger(__name__)
 

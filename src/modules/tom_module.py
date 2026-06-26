@@ -17,9 +17,9 @@ Audits are batched: one LLM call per evaluating agent scores all peers at once.
 """
 
 import logging
-import parameters
-from scenario_config import get_scenario_config
-from utils import robust_json_loads
+from core import parameters
+from core.scenario_config import get_scenario_config
+from core.utils import robust_json_loads
 
 logger = logging.getLogger(__name__)
 

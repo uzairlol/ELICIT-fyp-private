@@ -7,19 +7,19 @@ import logging
 import concurrent.futures
 import statistics
 from datetime import datetime
-import parameters
+from core import parameters
 
 logger = logging.getLogger(__name__)
-from agent import Agent
-from institution import SanctioningInstitution, SanctionFreeInstitution
-from tom_module import TomModule
-from democracy_module import DemocracyModule
-from oracle import Oracle
-from subsidy import SubsidyModule
-from loss_damage_fund import LossDamageFund
-from scenario_config import get_scenario_config
+from core.agent import Agent
+from core.institution import SanctioningInstitution, SanctionFreeInstitution
+from modules.tom_module import TomModule
+from modules.democracy_module import DemocracyModule
+from modules.oracle import Oracle
+from core.subsidy import SubsidyModule
+from core.loss_damage_fund import LossDamageFund
+from core.scenario_config import get_scenario_config
 if parameters.GOSSIP_ENABLED:
-    from gossip_module import GossipModule
+    from modules.gossip_module import GossipModule
 
 class Environment:
     def __init__(self, agents):
@@ -557,7 +557,7 @@ class Environment:
         Filename format: results/simulation_<model>_<N>agents_<R>rounds_<YYYYMMDD_HHMMSS>.json
         """
         # Build the results directory next to this script
-        results_dir = os.path.join(os.path.dirname(__file__), '..', 'results')
+        results_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'results')
         os.makedirs(results_dir, exist_ok=True)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

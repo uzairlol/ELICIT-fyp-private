@@ -27,7 +27,7 @@ Usage:
     # "PUNISHMENT_EFFECT 3→4: Oracle predicts +14% welfare. Free-rider rate: 33%."
 """
 
-import parameters
+from core import parameters
 
 
 class Oracle:

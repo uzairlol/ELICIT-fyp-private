@@ -1,6 +1,6 @@
 # subsidy.py
 
-import parameters
+from core import parameters
 
 class SubsidyModule:
     """

@@ -6,10 +6,10 @@ import os
 import glob
 import random
 
-from agent import Agent
-from environment import Environment
-import parameters
-from ollama_client import OllamaClient
+from core.agent import Agent
+from core.environment import Environment
+from core import parameters
+from llm.ollama_client import OllamaClient
 
 logger = logging.getLogger(__name__)
 

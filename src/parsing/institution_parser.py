@@ -1,7 +1,7 @@
 import re
 import random
-import parameters
-from response_parsing_utils import _unwrap_response_data, _make_parser_meta
+from core import parameters
+from parsing.response_parsing_utils import _unwrap_response_data, _make_parser_meta
 
 
 def parse_institution_choice_response(response, agent_id):

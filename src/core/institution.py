@@ -10,9 +10,9 @@ Both institutions manage the grouping of agents and their interactions within th
 """
 
 import logging
-import parameters
+from core import parameters
 import concurrent.futures
-from scenario_config import get_scenario_config
+from core.scenario_config import get_scenario_config
 
 logger = logging.getLogger(__name__)
 

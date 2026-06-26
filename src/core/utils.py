@@ -7,7 +7,7 @@ import re
 
 def uses_climate_budget():
     """Shared check for whether the simulation is in climate/LDF budget mode."""
-    import parameters
+    from core import parameters
     scenario_name = str(getattr(parameters, 'SCENARIO', '')).lower()
     if scenario_name == 'climate':
         scenario_name = 'ldf'

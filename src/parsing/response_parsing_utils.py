@@ -2,8 +2,8 @@
 
 import logging
 import re
-import parameters
-from utils import robust_json_loads
+from core import parameters
+from core.utils import robust_json_loads
 
 logger = logging.getLogger(__name__)
 

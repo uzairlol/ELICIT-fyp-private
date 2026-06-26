@@ -1,10 +1,10 @@
 # prompt_generator.py
 
-import parameters
-from scenario_config import get_scenario_config
-from prompt_utils import _safe_int, _safe_float, _format_token_list, _format_recent_institutions
-from personas import _get_persona_block
-from utils import uses_climate_budget
+from core import parameters
+from core.scenario_config import get_scenario_config
+from prompts.prompt_utils import _safe_int, _safe_float, _format_token_list, _format_recent_institutions
+from core.personas import _get_persona_block
+from core.utils import uses_climate_budget
 
 
 def _uses_climate_budget():

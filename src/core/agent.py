@@ -28,21 +28,21 @@ Dependencies:
 
 import logging
 import random
-import parameters
+from core import parameters
 import os
 import json
-from utils import robust_json_loads, uses_climate_budget
+from core.utils import robust_json_loads, uses_climate_budget
 
 logger = logging.getLogger(__name__)
 
-from prompt_generator import (
+from prompts.prompt_generator import (
     construct_institution_choice_prompt,
     construct_contribution_prompt,
     construct_punishment_prompt,
     get_past_actions_string
 )
 
-from response_parser import (
+from parsing import (
     parse_institution_choice_response,
     parse_contribution_response_v2,
     parse_punishment_response,
@@ -376,7 +376,7 @@ class Agent:
         if not getattr(parameters, 'BELIEF_TRACKING_ENABLED', True):
             return
 
-        from scenario_config import get_scenario_config
+        from core.scenario_config import get_scenario_config
         sc = get_scenario_config(parameters.SCENARIO)
 
         # Format the anonymous peer data for the reflection prompt
@@ -607,7 +607,7 @@ Respond ONLY with a valid JSON object in this exact format:
 
     def log_debug(self, round_num, stage_name, prompt, response):
         """Helper to save LLM interactions for debugging."""
-        log_dir = os.path.join(os.path.dirname(__file__), 'debug_logs')
+        log_dir = os.path.join(os.path.dirname(__file__), '..', 'debug_logs')
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
         filename = f"agent_{self.agent_id}_round_{round_num}_{stage_name}.json"

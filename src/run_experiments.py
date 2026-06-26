@@ -15,7 +15,7 @@ sys.path.insert(0, str(src_dir))
 logger = logging.getLogger(__name__)
 
 import main
-import parameters
+from core import parameters
 
 ABLATION_SEEDS = [1]                 # Use 1 seed for baselines - it saves compute time
 MAIN_SEEDS = [1, 2, 3, 4, 5]         # Use 5 seeds for the main LDF runs for statistical rigor
@@ -116,7 +116,8 @@ def run_simulation(
     num_rounds=None,
 ):
     import importlib
-    importlib.reload(parameters)
+    import core.parameters
+    importlib.reload(core.parameters)
 
     global current_run
     current_run += 1

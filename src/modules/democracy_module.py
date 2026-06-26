@@ -20,11 +20,11 @@ log them in the round data / results JSON.
 """
 
 import logging
-import parameters
+from core import parameters
 import random
 import json
 import re
-from utils import robust_json_loads
+from core.utils import robust_json_loads
 
 logger = logging.getLogger(__name__)
 
