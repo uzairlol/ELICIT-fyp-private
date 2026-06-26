@@ -91,7 +91,7 @@ def _normalize_label_key(key):
     return text
 
 
-def _normalize_allocation_map(raw_map, expected_labels):
+def _normalize_allocation_map(raw_map, expected_labels, fill_missing=False):
     """Map LLM keys onto expected Agent labels when possible."""
     normalized = {}
     expected = set(expected_labels)
@@ -101,13 +101,20 @@ def _normalize_allocation_map(raw_map, expected_labels):
         if label in expected:
             normalized[label] = value
             continue
-        # Keep unmapped keys for downstream id resolution attempts.
         normalized[str(key)] = value
 
-    for label in expected_labels:
-        normalized.setdefault(label, 0)
+    if fill_missing:
+        for label in expected_labels:
+            normalized.setdefault(label, 0)
 
     return normalized
+
+
+def _stage2_total_cost(punishment_requests, reward_requests):
+    return (
+        sum(punishment_requests.values()) * parameters.PUNISHMENT_COST
+        + sum(reward_requests.values()) * parameters.REWARD_COST
+    )
 
 
 def _parse_allocation_tokens(val):
@@ -122,8 +129,8 @@ def _parse_allocation_tokens(val):
     return parsed if parsed > 0 else 0
 
 
-def _apply_stage2_allocations(punishments_map, rewards_map, agent, anonymized_id_mapping, group_state, budget, max_per_target):
-    """Apply punishments and rewards from one shared Stage 2 budget without order bias."""
+def _apply_stage2_allocations(punishments_map, rewards_map, agent, anonymized_id_mapping, group_state, budget, max_per_target=None):
+    """Resolve punishment/reward labels to agent ids without capping or trimming LLM amounts."""
     members = group_state.get('members', []) or []
     if members:
         group_avg = sum(getattr(m, 'contribution', 0) for m in members) / len(members)
@@ -141,8 +148,6 @@ def _apply_stage2_allocations(punishments_map, rewards_map, agent, anonymized_id
         tokens = _parse_allocation_tokens(raw_tokens)
         if not tokens:
             continue
-
-        tokens = min(tokens, max_per_target)
 
         target_contrib = None
         for peer in members:
@@ -171,20 +176,7 @@ def _apply_stage2_allocations(punishments_map, rewards_map, agent, anonymized_id
         if not tokens:
             continue
 
-        tokens = min(tokens, max_per_target)
         reward_requests[target_agent_id] = tokens
-
-    def _total_cost(pun_dict, rew_dict):
-        return (
-            sum(pun_dict.values()) * parameters.PUNISHMENT_COST
-            + sum(rew_dict.values()) * parameters.REWARD_COST
-        )
-
-    total_cost = _total_cost(punishment_requests, reward_requests)
-    if total_cost > budget and total_cost > 0:
-        punishment_requests, reward_requests = _fit_allocations_to_budget(
-            punishment_requests, reward_requests, budget, members
-        )
 
     return punishment_requests, reward_requests
 

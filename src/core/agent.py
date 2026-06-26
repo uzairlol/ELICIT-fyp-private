@@ -59,42 +59,14 @@ def _schema_repair_prompt(base_prompt, stage_name):
     )
 
 
-def _zero_punishment_retry_prompt(base_prompt, group_state, agent):
-    members = list((group_state or {}).get('members', []) or [])
-    avg = (sum(getattr(m, 'contribution', 0) for m in members) / len(members)) if members else 0.0
-    free_riders = sorted(
-        [
-            m for m in members
-            if m.agent_id != agent.agent_id and getattr(m, 'contribution', 0) < avg
-        ],
-        key=lambda m: (getattr(m, 'contribution', 0), m.agent_id),
-    )
-    rider_lines = [
-        f"- Agent {m.agent_id}: contrib={getattr(m, 'contribution', 0)} (group avg {avg:.1f})"
-        for m in free_riders[:8]
-    ]
-    riders_block = "\n".join(rider_lines) if rider_lines else "- none"
-    max_punishment = agent.get_max_punishment_tokens() if hasattr(agent, 'get_max_punishment_tokens') else parameters.MAX_PUNISHMENT_TOKENS
+def _semantic_repair_prompt(base_prompt, stage_name):
     return (
         f"{base_prompt}\n\n"
-        "IMPORTANT RETRY (Punishment and Reward Choice): Your previous JSON had all punishment amounts set to 0, "
-        f"but free-riders exist this round. Either assign integer sanction amounts (1–{max_punishment}) to specific free-riders "
-        "in \"punishments\", or set reasoning to explicitly state why every amount is 0.\n"
-        "Do not write generic punishment talk if all amounts stay 0. Fill \"justifications\" for every target.\n"
-        f"Free-riders below group average:\n{riders_block}\n"
-        "Return ONLY one valid JSON object. No markdown or extra text."
-    )
-
-
-def _group_has_free_riders(group_state, agent):
-    members = list((group_state or {}).get('members', []) or [])
-    if len(members) < 2:
-        return False
-    avg = sum(getattr(m, 'contribution', 0) for m in members) / len(members)
-    return any(
-        getattr(m, 'contribution', 0) < avg
-        for m in members
-        if m.agent_id != agent.agent_id
+        f"IMPORTANT RETRY ({stage_name}): Your previous response was internally inconsistent. "
+        "Punishments, justifications, and reasoning must agree. "
+        "If all punishment amounts are 0, reasoning must explicitly state that. "
+        "If you punish anyone, set amounts > 0 and explain each target in justifications and reasoning. "
+        "Return ONLY one valid JSON object. No markdown, no code fences, no extra text."
     )
 
 class Agent:
@@ -244,9 +216,13 @@ class Agent:
                 response = repair_response
                 choice, reasoning, facts_used, deepseek_think, parser_meta = retry_choice, retry_reasoning, retry_facts, retry_deepseek, retry_meta
 
-        if parser_meta.get('fallback_used', False):
+        if parser_meta.get('fallback_used', False) or choice not in ('SI', 'SFI'):
             self.parsing_failures += 1
-        
+            raise RuntimeError(
+                f"Agent {self.agent_id} institution choice parse failed after retry: "
+                f"{parser_meta.get('fallback_reason', 'unknown error')}"
+            )
+
         self.institution_choice = choice
         self.institution_reasoning = reasoning
         self.institution_facts_used = facts_used
@@ -302,8 +278,12 @@ class Agent:
                 response = repair_response
                 contribution, llm_reasoning, facts_used, deepseek_think, parser_meta = retry_contrib, retry_reasoning, retry_facts, retry_deepseek, retry_meta
 
-        if parser_meta.get('fallback_used', False):
+        if parser_meta.get('fallback_used', False) or contribution is None:
             self.parsing_failures += 1
+            raise RuntimeError(
+                f"Agent {self.agent_id} contribution parse failed after retry: "
+                f"{parser_meta.get('fallback_reason', 'unknown error')}"
+            )
 
         # Enforce bounds
         contribution = max(parameters.MIN_CONTRIBUTION, min(contribution, self.get_stage1_contribution_cap()))
@@ -351,32 +331,30 @@ class Agent:
                 justifications, facts_used, deepseek_think = retry_just, retry_facts, retry_deepseek
                 parser_meta = retry_meta
 
-        if (
-            not punishment_allocations
-            and not reward_allocations
-            and parser_meta.get('all_zero_punishments')
-            and _group_has_free_riders(group_state, self)
-        ):
-            mismatch_response = self.api_client.send_request(
+        if parser_meta.get('semantic_retry', False) and not parser_meta.get('fallback_used', False):
+            semantic_response = self.api_client.send_request(
                 model_name=self.api_client.deployment_name,
-                prompt=_zero_punishment_retry_prompt(prompt, group_state, self),
+                prompt=_semantic_repair_prompt(prompt, "Punishment and Reward Choice"),
                 response_format={"type": "json_object"},
                 max_tokens=2250,
                 temperature=temperature,
                 top_p=top_p
             )
-            retry_vals = parse_punishment_response(mismatch_response, group_state, self)
+            retry_vals = parse_punishment_response(semantic_response, group_state, self)
             retry_pun, retry_rew, retry_reason, retry_deanon, retry_just, retry_facts, retry_deepseek, retry_meta = retry_vals
-            if retry_pun or retry_rew or not retry_meta.get('all_zero_punishments'):
-                response = mismatch_response
+            if not retry_meta.get('fallback_used', False):
+                response = semantic_response
                 punishment_allocations, reward_allocations = retry_pun, retry_rew
                 reasoning, deanonymized = retry_reason, retry_deanon
                 justifications, facts_used, deepseek_think = retry_just, retry_facts, retry_deepseek
                 parser_meta = retry_meta
-                parser_meta['zero_allocation_retry'] = True
 
         if parser_meta.get('fallback_used', False):
             self.parsing_failures += 1
+            logger.warning(
+                f"Agent {self.agent_id} punishment parse failed after retries: "
+                f"{parser_meta.get('fallback_reason', 'unknown error')}"
+            )
         
         self.log_debug(self.round_number, "stage_2_punishment", prompt, response)
 

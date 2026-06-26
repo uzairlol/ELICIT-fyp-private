@@ -49,40 +49,47 @@ class TomModule:
             return {}
 
         prompt = self._build_batch_prompt(evaluating_agent, targets, round_number)
+        max_tokens = max(2048, 96 * len(targets))
+
         response = self.api_client.send_request(
             model_name=self.api_client.deployment_name,
             prompt=prompt,
-            max_tokens=768,
+            max_tokens=max_tokens,
             temperature=0.3,
             response_format={"type": "json_object"},
         )
 
-        scores = self._parse_batch_response(response, targets)
+        scores, parse_error = self._parse_batch_response(response, targets)
 
-        if self._batch_needs_repair(scores, targets):
+        if parse_error:
             repair_prompt = (
                 f"{prompt}\n\n"
-                "IMPORTANT RETRY (ToM Batch Audit): Your previous response did not include "
-                "all required peer scores. Return ONLY one valid JSON object with a "
-                '"scores" object containing every listed Agent label exactly once.'
+                "IMPORTANT RETRY (ToM Batch Audit): Your previous response was invalid or incomplete. "
+                "Return ONLY one valid JSON object with a \"scores\" object containing every listed "
+                "Agent label exactly once. Keep each reasoning under 12 words."
             )
             repair_response = self.api_client.send_request(
                 model_name=self.api_client.deployment_name,
                 prompt=repair_prompt,
-                max_tokens=768,
+                max_tokens=max_tokens,
                 temperature=0.3,
                 response_format={"type": "json_object"},
             )
-            repaired = self._parse_batch_response(repair_response, targets)
-            if not self._batch_needs_repair(repaired, targets):
+            scores, parse_error = self._parse_batch_response(repair_response, targets)
+            if not parse_error:
                 response = repair_response
-                scores = repaired
+
+        if parse_error:
+            logger.error(
+                f"[ToM] Agent {evaluating_agent.agent_id} audit failed after retry: {parse_error}"
+            )
+            return {}
 
         if not hasattr(evaluating_agent, 'tom_audit_log'):
             evaluating_agent.tom_audit_log = []
 
         for target in targets:
-            entry = scores.get(target.agent_id, {'score': 5.0, 'reasoning': 'Missing score.'})
+            entry = scores[target.agent_id]
             score = entry['score']
             reasoning = entry['reasoning']
             if getattr(parameters, 'TOM_VERBOSE', False):
@@ -136,7 +143,7 @@ class TomModule:
                 f"contributed {contribution} / {endowment} {currency_name}"
             )
             score_template_lines.append(
-                f'    "{label}": {{"trust_score": <integer 1-10>, "reasoning": "<one sentence>"}}'
+                f'    "{label}": {{"trust_score": <integer 1-10>, "reasoning": "<max 12 words>"}}'
             )
 
         peers_block = "\n".join(peer_lines)
@@ -152,6 +159,7 @@ For each peer below, compare their stated intent before contributing with what t
 - 5 = neutral / insufficient data
 
 In each reasoning string, do NOT use specific Agent IDs or numbers. Refer to the individual as "the target" or "this participant".
+Keep each reasoning under 12 words.
 
 **Peers to audit:**
 {peers_block}
@@ -167,7 +175,7 @@ You MUST include every listed Agent label exactly once under "scores".
 """
 
     def _parse_batch_response(self, response, targets):
-        """Parse batched trust scores. Missing peers default to neutral 5.0."""
+        """Parse batched trust scores. Returns (results, error_message)."""
         results = {}
         try:
             data = robust_json_loads(response)
@@ -185,29 +193,32 @@ You MUST include every listed Agent label exactly once under "scores".
                     or scores_block.get(str(target.agent_id))
                     or scores_block.get(target.agent_id)
                 )
+                if entry is None:
+                    raise ValueError(f'Missing score for {label}')
                 score, reasoning = self._parse_score_entry(entry)
                 results[target.agent_id] = {'score': score, 'reasoning': reasoning}
 
+            if len(results) != len(targets):
+                raise ValueError('Incomplete scores mapping')
+
+            return results, ''
+
         except Exception as e:
             logger.warning(f"[ToM Batch] Parse failed for evaluator batch: {e}")
-            for target in targets:
-                results[target.agent_id] = {
-                    'score': 5.0,
-                    'reasoning': f'Batch parsing failed — defaulting to neutral score. {e}',
-                }
-
-        return results
+            return {}, str(e)
 
     @staticmethod
     def _parse_score_entry(entry):
         if isinstance(entry, dict):
-            score = float(entry.get('trust_score', 5))
+            if 'trust_score' not in entry:
+                raise ValueError('Missing trust_score')
+            score = float(entry.get('trust_score'))
             reasoning = str(entry.get('reasoning', '') or '')
         elif entry is not None:
             score = float(entry)
             reasoning = ''
         else:
-            return 5.0, 'Missing from batch response — defaulting to neutral score.'
+            raise ValueError('Empty score entry')
 
         score = max(1.0, min(10.0, score))
 
@@ -218,16 +229,3 @@ You MUST include every listed Agent label exactly once under "scores".
             reasoning = f"<think>\n{deepseek_thought}\n</think>\n{reasoning}"
 
         return score, reasoning
-
-    @staticmethod
-    def _batch_needs_repair(scores, targets):
-        if len(scores) != len(targets):
-            return True
-        for target in targets:
-            entry = scores.get(target.agent_id)
-            if not entry:
-                return True
-            reasoning = str(entry.get('reasoning', '') or '')
-            if reasoning.startswith('Missing from batch response') or reasoning.startswith('Batch parsing failed'):
-                return True
-        return False

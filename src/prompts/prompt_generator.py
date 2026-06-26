@@ -281,9 +281,9 @@ def _build_stage2_card(agent, group_state, sc, ordered_others=None):
             f"- Sanction budget: {s2_budget:,.0f} {currency} TOTAL for this round "
             f"({parameters.STAGE_2_WEALTH_FRACTION:.0%} of your wealth{funding_info})"
         )
-        max_line = f"- Max sanction per target: {max_punishment:,.0f} {currency}"
+        max_line = f"- Max sanction per target: up to your full budget ({s2_budget:,.0f} {currency})"
         amount_rule = (
-            f"Allocate integer {currency} amounts (0–{max_punishment:,.0f} per target, same scale as wealth and contributions). "
+            f"Allocate integer {currency} amounts (0 up to your budget, same scale as wealth and contributions). "
             f"Include every listed target exactly once in \"punishments\" (use 0 if not punishing). Rewards are optional."
         )
         avg_line = f"- Group average contribution this round: {avg_contrib:,.2f} {currency} — agents below this are free-riding"
@@ -558,18 +558,25 @@ def construct_punishment_prompt(agent, group_state):
 
     if _uses_climate_budget():
         amount_contract = (
-            f'- Amounts must be integers from 0 to {max_punishment:,.0f} {sc["currency_name"]} '
-            f'(wealth-scale, same units as contributions and your sanction budget).'
+            f'- Amounts must be integers in {sc["currency_name"]} on the same scale as contributions and wealth (no arbitrary caps).'
         )
         budget_contract = (
             f'- Your total spend (punishment × {parameters.PUNISHMENT_COST} + reward × {parameters.REWARD_COST}) '
             f'MUST NOT exceed {s2_budget:,.0f} {sc["currency_name"]}.'
+        )
+        justify_contract = (
+            '- "justifications" MUST include every target label. Use "" only for targets with amount 0; '
+            'one sentence per target with punishment or reward amount > 0.'
         )
     else:
         amount_contract = f'- Amounts must be integers from 0 to {max_punishment} only.'
         budget_contract = (
             f'- Your total spend (punishment tokens × {parameters.PUNISHMENT_COST} + reward tokens × {parameters.REWARD_COST}) '
             f'MUST NOT exceed {s2_budget}.'
+        )
+        justify_contract = (
+            '- "justifications" MUST include every target label. Use "" only for targets with amount 0; '
+            'one sentence per target with punishment or reward amount > 0.'
         )
 
     prompt += f"""
@@ -579,11 +586,12 @@ def construct_punishment_prompt(agent, group_state):
 - "punishments" MUST include ALL {len(target_labels)} target labels as keys. Use 0 for targets you are not punishing.
 {amount_contract}
 - "rewards" is OPTIONAL — omit it or use {{}} if you are not rewarding anyone.
-- "justifications" MUST include every target label. Use "" for unpunished/unrewarded targets; one sentence per target you punish or reward with amount > 0.
+{justify_contract}
 {budget_contract}
 - Do not include yourself in either object.
 - Focus punishments on free-riders: agents who contributed below the group average or whose stated intent does not match their action.
-- In "reasoning", list each Agent label you punish with amount > 0 and why. If you punish nobody, say explicitly that all amounts are 0.
+- In "reasoning", list EACH Agent label with its amount and why (e.g. "Agent 2: 50000 because ...; Agent 10: 0 because ...").
+- If you punish nobody, reasoning MUST explicitly say all amounts are 0.
 
 **Target labels (ALL must appear as keys in punishments and justifications):** {label_block}
 
@@ -595,7 +603,7 @@ def construct_punishment_prompt(agent, group_state):
     "justifications": {{
         {justify_keys}
     }},
-    "reasoning": "Agent X: N tokens because ...; Agent Y: 0 because ...",
+    "reasoning": "Agent X: N because ...; Agent Y: 0 because ...",
     "facts_used": ["Fact 1", "Fact 2"]
 }}
 

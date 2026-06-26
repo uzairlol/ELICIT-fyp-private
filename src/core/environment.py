@@ -95,6 +95,8 @@ class Environment:
             for future in concurrent.futures.as_completed(futures):
                 evaluator = futures[future]
                 scores = future.result()
+                if not scores:
+                    continue
                 for target_id, data in scores.items():
                     score = data['score']
                     reasoning = data['reasoning']
