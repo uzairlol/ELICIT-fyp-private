@@ -5,11 +5,11 @@ import json
 import re
 import statistics
 from collections import defaultdict
+from pathlib import Path
 import matplotlib.pyplot as plt
 
 def ensure_dir(directory):
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    Path(directory).mkdir(parents=True, exist_ok=True)
 
 def save_current_plot(output_dir, plot_filename):
     """Saves the current matplotlib figure in the target directory.
@@ -18,7 +18,7 @@ def save_current_plot(output_dir, plot_filename):
     stable filenames to avoid Windows long-path issues.
     """
     ensure_dir(output_dir)
-    output_path = os.path.join(output_dir, plot_filename)
+    output_path = Path(output_dir) / plot_filename
     plt.savefig(output_path, dpi=300)
 
 def load_json(filepath):
@@ -500,7 +500,7 @@ def plot_ldf_condition_comparison(results_dir, selected_file, output_dir, filena
 
     data_by_cond = {}
     for cond, fn in matches.items():
-        data_by_cond[cond] = load_json(os.path.join(results_dir, fn))
+        data_by_cond[cond] = load_json(str(Path(results_dir) / fn))
 
     plt.figure(figsize=(12, 7))
     for cond in ["Control", "Reputation", "Voting", "Full"]:
@@ -566,10 +566,10 @@ def plot_ldf_condition_comparison(results_dir, selected_file, output_dir, filena
     return True
 
 def main():
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    results_dir = os.path.join(base_dir, 'results')
+    repo_root = Path(__file__).resolve().parents[2]
+    results_dir = repo_root / 'results'
     
-    if not os.path.exists(results_dir):
+    if not results_dir.exists():
         print(f"Error: Results directory '{results_dir}' not found. Have you run the simulation yet?")
         return
         
@@ -595,15 +595,14 @@ def main():
         return
         
     selected_file = json_files[selection]
-    json_path = os.path.join(results_dir, selected_file)
+    json_path = results_dir / selected_file
     filename = selected_file.replace('.json', '')
     
-    # Create specific subfolder for this simulation inside figures/
-    output_dir = os.path.join(base_dir, 'figures', filename)
+    output_dir = repo_root / 'analysis_outputs' / 'plots' / filename
     ensure_dir(output_dir)
     
     print(f"\nLoading data from {selected_file}...")
-    data = load_json(json_path)
+    data = load_json(str(json_path))
     
     scapegoat_id = find_scapegoat(data)
     print(f"Identified Agent {scapegoat_id} as the scapegoat (lowest final payoff).")

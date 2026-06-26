@@ -1,6 +1,7 @@
 import os
 import json
 import math
+from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog
 import matplotlib.pyplot as plt
@@ -133,16 +134,16 @@ def main():
     root = tk.Tk()
     root.withdraw()
     
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    results_dir = os.path.join(base_dir, 'results')
+    repo_root = Path(__file__).resolve().parents[2]
+    results_dir = repo_root / 'results'
     
-    if not os.path.exists(results_dir):
+    if not results_dir.exists():
         print(f"Results directory '{results_dir}' not found.")
         return
         
     print("Opening file dialog to select simulation results file...")
     file_path = filedialog.askopenfilename(
-        initialdir=results_dir,
+        initialdir=str(results_dir),
         title="Select results JSON file",
         filetypes=(("JSON files", "*.json"), ("All files", "*.*"))
     )
@@ -156,8 +157,8 @@ def main():
         data = json.load(f)
         
     filename = os.path.basename(file_path).replace('.json', '')
-    output_dir = os.path.join(base_dir, 'figures', f"{filename}_wordclouds")
-    os.makedirs(output_dir, exist_ok=True)
+    output_dir = repo_root / 'analysis_outputs' / 'plots' / f"{filename}_wordclouds"
+    output_dir.mkdir(parents=True, exist_ok=True)
     
     # Process each round
     total_rounds = len(data)

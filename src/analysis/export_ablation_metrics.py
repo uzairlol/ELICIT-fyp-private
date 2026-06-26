@@ -291,8 +291,9 @@ def export_metrics(results_dir: Path, output_dir: Path) -> None:
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Export ablation metrics from simulation JSON files.")
-    parser.add_argument("--results-dir", type=Path, default=Path(__file__).resolve().parents[1] / "results")
-    parser.add_argument("--output-dir", type=Path, default=Path(__file__).resolve().parents[1] / "analysis_outputs" / "metrics")
+    repo_root = Path(__file__).resolve().parents[2]
+    parser.add_argument("--results-dir", type=Path, default=repo_root / "results")
+    parser.add_argument("--output-dir", type=Path, default=repo_root / "analysis_outputs" / "metrics")
     return parser
 
 

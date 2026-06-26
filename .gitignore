@@ -1,21 +1,28 @@
 # Python caches
 **/__pycache__/
 *.pyc
+*.pyo
 
-# AI agent logs
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Runtime / debug artifacts
 src/debug_logs/
+*.log
+debug.log
+
+# Generated analysis outputs (plots, metrics CSVs, test runs)
+analysis_outputs/
+
+# Legacy plot output folder (interactive plot_results.py used to write here)
+figures/
 
 # Asset and LaTeX artifacts
 assets/
 *supplementary_tables.tex
 
-# Output data CSVs
+# Ad-hoc summary CSVs
 *_summary.csv
 *_dynamics.csv
-
-# Log files
-*.log
-debug.log
-
-# Simulation plots and figures
-figures/
