@@ -78,7 +78,7 @@ def _json_response_block(stage_name):
     return f"""
 
 **Response Contract ({stage_name}):**
-- Think briefly before answering, but keep the final response concise.
+- Keep the final response concise.
 - Use at most 2-3 short internal reasoning steps.
 - Return exactly one JSON object and nothing else.
 - Keep `reasoning` to one short sentence.
