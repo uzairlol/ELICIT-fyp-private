@@ -53,9 +53,9 @@ from parsing import (
 def _schema_repair_prompt(base_prompt, stage_name):
     return (
         f"{base_prompt}\n\n"
-        f"IMPORTANT RETRY ({stage_name}): Your previous response did not strictly satisfy the JSON contract. "
-        "Return ONLY one valid JSON object that exactly follows the required schema and key names. "
-        "No markdown, no code fences, no extra text."
+        f"IMPORTANT RETRY ({stage_name}): Your previous response was invalid or incomplete. "
+        "Return ONLY one JSON object matching the Required JSON shape exactly. "
+        "Use the exact key names shown. No markdown, no code fences, no extra text."
     )
 
 
@@ -472,7 +472,7 @@ class Agent:
 
         prompt = f"""You are Agent {self.agent_id} in a {sc['game_name']}. Round {round_feedback.get('round_number', '?')} just ended.
 
-Your task is to UPDATE your internal belief state based on what happened this round.
+Task: UPDATE your internal belief state based on what happened this round.
 
 **Your current belief state (from before this round):**
 {current_belief_str}
@@ -484,19 +484,22 @@ Your task is to UPDATE your internal belief state based on what happened this ro
 {peer_block}
 
 **Instructions:**
-- Update your trust assessment for each peer agent based on their behavior.
-- Update your institutional strategy based on whether your current approach is working.
-- Record any notable observations or patterns you are noticing.
-- Be concise: each field should be 1-2 sentences max.
+1. Update trust_levels for each peer you observed (1-2 word label per agent id, e.g. cooperative, free-rider).
+2. Update institutional_strategy: your plan for the next round (1-2 sentences).
+3. Update observations: patterns or trends you notice (1-2 sentences).
 
-Respond ONLY with a valid JSON object in this exact format:
+**Required JSON shape:**
 {{
   "trust_levels": {{
-    "<agent_id>": "<1-2 word trust assessment, e.g. 'cooperative', 'free-rider', 'inconsistent', 'trustworthy'>" 
+    "<agent_id>": "<short trust label>"
   }},
   "institutional_strategy": "<1-2 sentences on your plan for the next round>",
   "observations": "<1-2 sentences on patterns or trends you notice>"
-}}"""
+}}
+
+**FINAL OUTPUT RULES:**
+- Return exactly ONE JSON object with keys trust_levels, institutional_strategy, observations.
+- No markdown, no code fences, no text outside the JSON."""
 
         try:
             response = self.api_client.send_request(

@@ -144,7 +144,7 @@ class TomModule:
 
         return f"""You are Agent {evaluator.agent_id} in a public goods experiment (Round {round_number}).
 
-You are auditing the behavioral consistency of Agent {target.agent_id} this round.
+Task: Score the behavioral consistency of Agent {target.agent_id} this round.
 
 **Stated intent before contributing:**
 "{stated_intent}"
@@ -152,15 +152,19 @@ You are auditing the behavioral consistency of Agent {target.agent_id} this roun
 **Actual contribution:**
 {contribution} / {endowment} {currency_name}
 
-Compare stated intent with actual contribution:
-- 10 = action perfectly matched stated intent (highly consistent)
-- 1 = action was inconsistent with their words (highly varied)
+**Scoring scale:**
+- 10 = action perfectly matched stated intent
 - 5 = neutral / insufficient data
+- 1 = action inconsistent with stated intent
 
-Respond ONLY with valid JSON in this exact format:
+**Required JSON shape:**
 {{
-  "trust_score": <integer 1-10>
-}}"""
+  "trust_score": 5
+}}
+
+**FINAL OUTPUT RULES:**
+- trust_score MUST be an integer from 1 to 10.
+- Return exactly ONE JSON object. No other keys. No text outside the JSON."""
 
     def _parse_score_response(self, response):
         """Parse a single trust score. Returns (score, error_message)."""

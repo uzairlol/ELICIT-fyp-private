@@ -2,7 +2,15 @@
 
 from core import parameters
 from core.scenario_config import get_scenario_config
-from prompts.prompt_utils import _safe_int, _safe_float, _format_token_list, _format_recent_institutions
+from prompts.prompt_utils import (
+    _safe_int,
+    _safe_float,
+    _format_token_list,
+    _format_recent_institutions,
+    _agent_task_header,
+    _LLM_FINAL_OUTPUT_RULES,
+    _llm_decision_steps,
+)
 from core.personas import _get_persona_block
 from core.utils import uses_climate_budget
 
@@ -90,34 +98,51 @@ def _format_mcpr_line(group_size=None):
     )
 
 
-def _json_response_block(stage_name, ldf_mode=False):
-    if ldf_mode and stage_name == "Contribution Choice":
-        return """
+def _json_response_block(stage_name, ldf_mode=False, budget=None):
+    if stage_name == "Institution Choice":
+        return f"""
 
-**Response Contract (Contribution Choice):**
-- Return exactly one JSON object and nothing else.
-- Required fields: `contribution`, `reasoning`, `facts_used` only.
+**Response Contract (Institution Choice):**
+- Required keys: institution_choice, reasoning, facts_used
+- institution_choice MUST be exactly "SI" or "SFI"
 
 **Required JSON shape:**
-{
-    "contribution": <integer>,
-    "reasoning": "<one short sentence>",
-    "facts_used": ["Fact 1", "Fact 2"]
-}
+{{
+    "institution_choice": "SI",
+    "reasoning": "One short sentence explaining your choice.",
+    "facts_used": ["Most important fact 1", "Most important fact 2"]
+}}
+{_llm_decision_steps(stage_name)}
+- Keep reasoning to one short sentence.
+- Keep facts_used to 2-3 items from the prompt above.
+{_LLM_FINAL_OUTPUT_RULES}"""
 
-- Keep `facts_used` to the 2-3 most important facts only.
-- Do not add markdown, code fences, or commentary outside the JSON.
-"""
+    if stage_name == "Contribution Choice":
+        max_contrib = _safe_int(budget) if budget is not None else parameters.ENDOWMENT_STAGE_1
+        return f"""
+
+**Response Contract (Contribution Choice):**
+- Required keys: contribution, reasoning, facts_used
+- contribution MUST be an integer from {parameters.MIN_CONTRIBUTION} to {max_contrib}
+
+**Required JSON shape:**
+{{
+    "contribution": 0,
+    "reasoning": "One short sentence explaining your choice.",
+    "facts_used": ["Most important fact 1", "Most important fact 2"]
+}}
+{_llm_decision_steps(stage_name)}
+- Keep reasoning to one short sentence.
+- Keep facts_used to 2-3 items from the prompt above.
+{_LLM_FINAL_OUTPUT_RULES}"""
+
     return f"""
 
 **Response Contract ({stage_name}):**
-- Keep the final response concise.
-- Use at most 2-3 short internal reasoning steps.
-- Return exactly one JSON object and nothing else.
-- Keep `reasoning` to one short sentence.
-- Keep `facts_used` to the 2-3 most important facts only.
-- Do not add markdown, code fences, or commentary outside the JSON.
-"""
+- Return exactly one JSON object with the required keys for this stage.
+- Keep reasoning to one short sentence.
+- Keep facts_used to 2-3 most important facts from the prompt.
+{_LLM_FINAL_OUTPUT_RULES}"""
 
 
 
@@ -453,6 +478,11 @@ def _append_belief_state(prompt, agent, sc):
                 f"Total Round Payoff: {entry.get('total_round_payoff', 0):.2f}"
             )
         prompt += "\n\nUse your Internal Beliefs above for long-term context and the previous round data for immediate situational awareness."
+        prompt += (
+            "\nWhen deciding, weigh evidence in this order: "
+            "(1) current decision card, (2) previous-round peer data, "
+            "(3) internal beliefs, (4) gossip if present."
+        )
     else:
         prompt += "\n\nNo peer data from previous rounds is available yet."
     return prompt
@@ -473,6 +503,7 @@ def _append_climate_role_guidance(prompt, agent):
     if str(parameters.SCENARIO).lower() != "ldf":
         return prompt
 
+    sc = get_scenario_config(parameters.SCENARIO)
     group = getattr(agent, 'agent_group', 'developing')
     if group == 'developed':
         prompt += """
@@ -491,12 +522,12 @@ def _append_climate_role_guidance(prompt, agent):
 - You may choose either protective or cooperative actions, but explain trade-offs clearly.
 """
 
-    prompt += """
+    prompt += f"""
 
 **LDF and Shock Context Reminder:**
 - Climate shocks are deterministic and can create asymmetric losses.
 - The Loss & Damage Fund can shift net outcomes through contributions and payouts.
-- **CRITICAL:** Any {sc['currency_name']} you choose to contribute to the public good (Emissions Reduction) are ALSO deposited into the LDF pool to fund disaster payouts.
+- **CRITICAL:** Any {sc['currency_name']} you contribute to emissions reduction is ALSO deposited into the LDF pool for disaster payouts.
 - Use these mechanisms as decision context, not as fixed rules that force a single choice.
 """
     return prompt
@@ -504,9 +535,10 @@ def _append_climate_role_guidance(prompt, agent):
 
 def construct_institution_choice_prompt(agent, round_number):
     sc = get_scenario_config(parameters.SCENARIO)
-    stage_text = f"You are in the institution selection stage in Round {round_number}."
-    
-    prompt = __build_prompt_prefix(agent, stage_text, round_number, sc)
+    stage_text = f"Stage 0 — Institution selection."
+
+    prompt = _agent_task_header(agent, "choose SI or SFI", round_number)
+    prompt += __build_prompt_prefix(agent, stage_text, round_number, sc)
     prompt += _get_persona_block(agent)
     prompt = _append_climate_role_guidance(prompt, agent)
     prompt += _build_stage0_card(agent, round_number, sc)
@@ -525,23 +557,26 @@ def construct_institution_choice_prompt(agent, round_number):
     if parameters.TOM_ENABLED:
         prompt += f"\n\n**Peer Trust Rating (Current Score):** {agent.reputation:.1f}/10"
 
-    prompt += "\n\nDecide which institution to join. Use the decision card above and keep the final answer short."
+    prompt += "\n\nDecide which institution to join using the decision card above."
     prompt += _json_response_block("Institution Choice")
     return prompt.strip()
 
 
 def construct_contribution_prompt(agent, group_state):
     sc = get_scenario_config(parameters.SCENARIO)
-    stage_text = f"You are in Stage 1, in the {agent.institution_choice} in Round {agent.round_number}."
-    prompt = __build_prompt_prefix(agent, stage_text, agent.round_number, sc)
+    stage_text = f"Stage 1 — Contribution in {agent.institution_choice}."
+    budget = _safe_int(_contribution_budget(agent))
+
+    prompt = _agent_task_header(agent, "choose contribution amount", agent.round_number, f"Institution: {agent.institution_choice}.")
+    prompt += __build_prompt_prefix(agent, stage_text, agent.round_number, sc)
     prompt += _get_persona_block(agent)
     prompt = _append_climate_role_guidance(prompt, agent)
     prompt += _build_stage1_card(agent, group_state, sc)
     prompt = _append_belief_state(prompt, agent, sc)
     prompt = _append_gossip(prompt, agent)
 
-    prompt += "\n\nDecide how much to contribute. Use the card above and return one integer value within the allowed budget."
-    prompt += _json_response_block("Contribution Choice", ldf_mode=_uses_climate_budget())
+    prompt += "\n\nDecide how much to contribute using the Stage 1 decision card above."
+    prompt += _json_response_block("Contribution Choice", ldf_mode=_uses_climate_budget(), budget=budget)
 
     if parameters.CURIOSITY_ENABLED and parameters.CURIOSITY_BONUS_PROMPT:
         if len(agent.history_contributions) >= 3:
@@ -554,13 +589,13 @@ def construct_contribution_prompt(agent, group_state):
 
 def construct_punishment_prompt(agent, group_state):
     sc = get_scenario_config(parameters.SCENARIO)
-    stage_text = f"You are in Stage 2, in the {agent.institution_choice} in Round {agent.round_number}."
-    # Reset mapping for this prompt
+    stage_text = f"Stage 2 — Punishment and reward allocation in {agent.institution_choice}."
     agent.anonymized_id_mapping = {}
 
     s2_budget = agent.get_stage2_budget() if hasattr(agent, 'get_stage2_budget') else parameters.ENDOWMENT_STAGE_2
 
-    prompt = __build_prompt_prefix(agent, stage_text, agent.round_number, sc)
+    prompt = _agent_task_header(agent, "assign punishments and optional rewards", agent.round_number, f"Institution: {agent.institution_choice}.")
+    prompt += __build_prompt_prefix(agent, stage_text, agent.round_number, sc)
     prompt += _get_persona_block(agent)
     prompt = _append_climate_role_guidance(prompt, agent)
 
@@ -579,8 +614,8 @@ def construct_punishment_prompt(agent, group_state):
         prompt += "\nUse per-target trust scores in the decision card together with current contributions and stated intent."
 
     prompt += (
-        "\n\n**Important:** Prioritize current-round contributions and stated intent (above) when deciding punishments. "
-        "Use gossip, trust scores, and Internal Beliefs as secondary evidence."
+        "\n\n**Decision priority:** Use (1) current-round contributions and stated intent in the decision card, "
+        "then (2) per-target trust scores, (3) internal beliefs, (4) gossip."
     )
 
     label_block = ", ".join(target_labels) if target_labels else ""
@@ -625,7 +660,6 @@ def construct_punishment_prompt(agent, group_state):
     prompt += f"""
 
 **Response Contract (Punishment and Reward Choice):**
-- Return exactly one JSON object and nothing else.
 - CRITICAL: Every punishment amount MUST be an integer in the "punishments" object. Do NOT put amounts only in reasoning.
 - "punishments" MUST include ALL {len(target_labels)} target labels as keys. Use 0 for targets you are not punishing.
 {amount_contract}
@@ -639,7 +673,7 @@ def construct_punishment_prompt(agent, group_state):
 
 **Target labels (ALL must appear as keys in punishments and justifications):** {label_block}
 
-**Required JSON shape:**
+**Required JSON shape (fill in your amounts):**
 {{
     "punishments": {{
         {punish_keys}
@@ -650,9 +684,9 @@ def construct_punishment_prompt(agent, group_state):
     "reasoning": "Brief summary of your sanction strategy.",
     "facts_used": ["Fact 1", "Fact 2"]
 }}
-
+{_llm_decision_steps("Punishment and Reward Choice")}
 - Numeric amounts live in "punishments" only. "justifications" explains why (no amounts required there).
-- Keep `facts_used` to the 2-3 most important facts only.
-- Do not add markdown, code fences, or commentary outside the JSON.
+- Keep facts_used to 2-3 items from the prompt above.
+{_LLM_FINAL_OUTPUT_RULES}
 """
     return prompt.strip()
