@@ -627,18 +627,16 @@ Task: UPDATE your internal belief state based on what happened this round.
         """
         Sanction budget for stage 2.
         Abstract mode: fixed ENDOWMENT_STAGE_2 game tokens.
-        Climate/LDF mode: 5% of current wealth (same scale as contributions), with a floor.
+        Climate/LDF mode: the agent's current wealth (no 5% cap), with a floor.
         """
         if self._uses_climate_budget():
-            scaled = int(self.wealth * parameters.STAGE_2_WEALTH_FRACTION)
-            return max(parameters.ENDOWMENT_STAGE_2, scaled)
+            return max(parameters.ENDOWMENT_STAGE_2, int(self.wealth))
         return parameters.ENDOWMENT_STAGE_2
 
     def get_max_punishment_tokens(self):
         """Max sanction amount assignable to a single peer in stage 2."""
         if self._uses_climate_budget():
-            scaled = int(self.wealth * parameters.STAGE_2_WEALTH_FRACTION)
-            return max(parameters.MAX_PUNISHMENT_TOKENS, scaled)
+            return max(parameters.MAX_PUNISHMENT_TOKENS, int(self.wealth))
         return parameters.MAX_PUNISHMENT_TOKENS
 
     def get_stage2_payoff(self):

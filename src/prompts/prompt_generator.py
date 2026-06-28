@@ -340,7 +340,7 @@ def _build_stage2_card(agent, group_state, sc, ordered_others=None):
     if climate_mode:
         budget_line = (
             f"- Sanction budget: {s2_budget:,.0f} {currency} TOTAL for this round "
-            f"({parameters.STAGE_2_WEALTH_FRACTION:.0%} of your wealth{funding_info})"
+            f"(up to your full wealth{funding_info})"
         )
         max_line = f"- Max sanction per target: up to your full budget ({s2_budget:,.0f} {currency})"
         amount_rule = (
