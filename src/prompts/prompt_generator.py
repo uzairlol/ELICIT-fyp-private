@@ -74,7 +74,40 @@ def _sort_peers_for_punishment(others):
         key=lambda member: (_safe_int(getattr(member, 'contribution', 0)), member.agent_id),
     )
 
-def _json_response_block(stage_name):
+
+def _format_mcpr_line(group_size=None):
+    """MCPR = marginal return to the contributor per unit contributed."""
+    multiplier = parameters.PUBLIC_GOOD_MULTIPLIER
+    if group_size and group_size > 0:
+        mcpr = multiplier / group_size
+        return (
+            f"- MCPR (marginal return to you per unit contributed): {mcpr:.4f} "
+            f"(group multiplier {multiplier} split among {group_size} members)"
+        )
+    return (
+        f"- MCPR (marginal return to you per unit contributed): {multiplier} / group_size "
+        f"(group multiplier {multiplier} split among members in your institution)"
+    )
+
+
+def _json_response_block(stage_name, ldf_mode=False):
+    if ldf_mode and stage_name == "Contribution Choice":
+        return """
+
+**Response Contract (Contribution Choice):**
+- Return exactly one JSON object and nothing else.
+- Required fields: `contribution`, `reasoning`, `facts_used` only.
+
+**Required JSON shape:**
+{
+    "contribution": <integer>,
+    "reasoning": "<one short sentence>",
+    "facts_used": ["Fact 1", "Fact 2"]
+}
+
+- Keep `facts_used` to the 2-3 most important facts only.
+- Do not add markdown, code fences, or commentary outside the JSON.
+"""
     return f"""
 
 **Response Contract ({stage_name}):**
@@ -196,6 +229,8 @@ def _build_stage1_card(agent, group_state, sc):
         if same_inst_contribs:
             prev_avg_str = f"{sum(same_inst_contribs) / len(same_inst_contribs):.2f} {sc['currency_name']}"
 
+    mcpr_line = _format_mcpr_line(group_size)
+
     return f"""
 **Decision Card — Stage 1 / Contribution**
 - Institution: {getattr(agent, 'institution_choice', 'unknown')}
@@ -203,6 +238,7 @@ def _build_stage1_card(agent, group_state, sc):
 - Minimum contribution: {parameters.MIN_CONTRIBUTION}
 - Maximum contribution: {budget}
 - Group size: {group_size}
+{mcpr_line}
 - Previous round's group average contribution: {prev_avg_str}
 - Your recent contributions: {recent_contributions}
 - Your recent institution choices: {recent_institutions}
@@ -371,7 +407,7 @@ def __build_prompt_prefix(agent, stage_text, round_number, sc):
 
 **Scenario Rules Snapshot:**
 - Stage 1 contribution uses your current budget: {_safe_int(agent.get_stage1_contribution_cap() if hasattr(agent, 'get_stage1_contribution_cap') else parameters.ENDOWMENT_STAGE_1)} {sc['currency_name']}
-- Public good multiplier: {parameters.PUBLIC_GOOD_MULTIPLIER}
+{_format_mcpr_line()}
 - Stage 2 budget: {s2_budget} {sc['currency_name']}{funding_info} (SI members only — SFI members skip Stage 2 entirely)
 - Punishment effect / cost (SI only): -{parameters.PUNISHMENT_EFFECT} / {parameters.PUNISHMENT_COST} {sc['currency_name']}
 - Reward effect / cost (SI only): +{parameters.REWARD_EFFECT} / {parameters.REWARD_COST} {sc['currency_name']}
@@ -504,8 +540,8 @@ def construct_contribution_prompt(agent, group_state):
     prompt = _append_belief_state(prompt, agent, sc)
     prompt = _append_gossip(prompt, agent)
 
-    prompt += "\n\nDecide how much to contribute. Use the card above and return one integer value within the allowed budget. Keep reasoning concise."
-    prompt += _json_response_block("Contribution Choice")
+    prompt += "\n\nDecide how much to contribute. Use the card above and return one integer value within the allowed budget."
+    prompt += _json_response_block("Contribution Choice", ldf_mode=_uses_climate_budget())
 
     if parameters.CURIOSITY_ENABLED and parameters.CURIOSITY_BONUS_PROMPT:
         if len(agent.history_contributions) >= 3:
@@ -568,6 +604,10 @@ def construct_punishment_prompt(agent, group_state):
             '- "justifications" MUST include every target label. Use "" only for targets with amount 0; '
             'one sentence per target with punishment or reward amount > 0.'
         )
+        reasoning_contract = (
+            '- "reasoning": one short summary of your sanction strategy. '
+            'Amounts MUST be in "punishments", not in reasoning.'
+        )
     else:
         amount_contract = f'- Amounts must be integers from 0 to {max_punishment} only.'
         budget_contract = (
@@ -577,6 +617,9 @@ def construct_punishment_prompt(agent, group_state):
         justify_contract = (
             '- "justifications" MUST include every target label. Use "" only for targets with amount 0; '
             'one sentence per target with punishment or reward amount > 0.'
+        )
+        reasoning_contract = (
+            '- "reasoning": one short summary. Amounts MUST be in "punishments", not in reasoning.'
         )
 
     prompt += f"""
@@ -591,7 +634,7 @@ def construct_punishment_prompt(agent, group_state):
 {budget_contract}
 - Do not include yourself in either object.
 - Focus punishments on free-riders: agents who contributed below the group average or whose stated intent does not match their action.
-- "reasoning": one short summary sentence (optional per-agent detail, but amounts MUST still be in "punishments").
+{reasoning_contract}
 - If you punish nobody, set all punishments to 0 and say so in reasoning.
 
 **Target labels (ALL must appear as keys in punishments and justifications):** {label_block}

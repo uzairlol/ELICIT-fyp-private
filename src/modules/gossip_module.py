@@ -52,9 +52,17 @@ class GossipModule:
                 target_str = f"Agent {gossip['target']}"
 
             source_str = f"Agent {gossip['source']}"
-            
-            # The reasoning string is scrubbed of actual IDs by the LLM instructions in tom_module.
-            line = f"- {source_str} observed regarding {target_str} (Consistency Score: {gossip['score']}/10). Comment: \"{gossip['reasoning']}\""
+            reasoning = str(gossip.get('reasoning', '') or '').strip()
+            if reasoning:
+                line = (
+                    f"- {source_str} observed regarding {target_str} "
+                    f"(Consistency Score: {gossip['score']}/10). Comment: \"{reasoning}\""
+                )
+            else:
+                line = (
+                    f"- {source_str} observed regarding {target_str} "
+                    f"(Consistency Score: {gossip['score']}/10)."
+                )
             gossip_lines.append(line)
         
         if not gossip_lines:

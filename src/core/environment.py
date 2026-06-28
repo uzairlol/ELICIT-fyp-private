@@ -144,7 +144,17 @@ class Environment:
         if self.gossip_module and self.gossip_module.gossip_bulletin:
             logger.info(f"{'='*20} SOCIAL GOSSIP BULLETIN {'='*20}")
             for gossip in self.gossip_module.gossip_bulletin:
-                logger.info(f"Agent {gossip['source']} on Agent {gossip['target']}: \"{gossip['reasoning'][:150]}...\"")
+                reasoning = str(gossip.get('reasoning', '') or '').strip()
+                if reasoning:
+                    logger.info(
+                        f"Agent {gossip['source']} on Agent {gossip['target']}: "
+                        f"score {gossip['score']}/10 — \"{reasoning[:150]}...\""
+                    )
+                else:
+                    logger.info(
+                        f"Agent {gossip['source']} on Agent {gossip['target']}: "
+                        f"score {gossip['score']}/10"
+                    )
             logger.info(f"{'='*64}")
 
     def run_round(self):

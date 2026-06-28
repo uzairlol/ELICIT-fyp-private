@@ -35,7 +35,7 @@ ENDOWMENT_STAGE_2 = 20   # Tokens per agent per round (Stage 2 sanctions)
 STAGE_2_WEALTH_FRACTION = 0.05  # Climate/LDF: stage-2 sanction budget = max(ENDOWMENT_STAGE_2, wealth * this)
 
 # --- Public Goods Game ---
-PUBLIC_GOOD_MULTIPLIER = 1.6   # Multiplication factor for group contributions
+PUBLIC_GOOD_MULTIPLIER = 1.6   # Multiplication factor for group contributions (MCPR = this / group_size)
 MIN_CONTRIBUTION = 0
 MAX_CONTRIBUTION = ENDOWMENT_STAGE_1
 
