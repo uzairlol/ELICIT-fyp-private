@@ -104,7 +104,7 @@ class TomModule:
             response_format={"type": "json_object"},
         )
 
-        score, parse_error = self._parse_score_response(response)
+        score, reasoning, parse_error = self._parse_score_response(response)
         if parse_error:
             repair_prompt = (
                 f"{prompt}\n\n"
@@ -118,7 +118,7 @@ class TomModule:
                 temperature=0.3,
                 response_format={"type": "json_object"},
             )
-            score, parse_error = self._parse_score_response(repair_response)
+            score, reasoning, parse_error = self._parse_score_response(repair_response)
             if not parse_error:
                 response = repair_response
 
@@ -129,7 +129,7 @@ class TomModule:
             )
             return None, ''
 
-        return score, ''
+        return score, reasoning
 
     def _build_pair_prompt(self, evaluator, target, round_number):
         sc = get_scenario_config(parameters.SCENARIO)
@@ -159,21 +159,24 @@ Task: Score the behavioral consistency of Agent {target.agent_id} this round.
 
 **Required JSON shape:**
 {{
-  "trust_score": 5
+  "trust_score": <integer 1-10>,
+  "reasoning": "<one line comment max 12 words>"
 }}
 
 **FINAL OUTPUT RULES:**
 - trust_score MUST be an integer from 1 to 10.
+- reasoning MUST be a short, third-person comment (max 12 words) explaining the score. Do NOT use specific Agent IDs.
 - Return exactly ONE JSON object. No other keys. No text outside the JSON."""
 
     def _parse_score_response(self, response):
-        """Parse a single trust score. Returns (score, error_message)."""
+        """Parse a single trust score. Returns (score, reasoning, error_message)."""
         try:
             data = robust_json_loads(response)
             if 'trust_score' not in data:
                 raise ValueError('Missing trust_score')
             score = float(data['trust_score'])
             score = max(1.0, min(10.0, score))
-            return score, ''
+            reasoning = str(data.get('reasoning', '') or '').strip()
+            return score, reasoning, ''
         except Exception as e:
-            return None, str(e)
+            return None, '', str(e)

@@ -71,63 +71,10 @@ class GossipModule:
                     break
             sources = next_sources
 
-        # Generate standalone reasoning comments for the selected gossip bulletin items
-        for audit in selected_audits:
-            if self.api_client:
-                stated_intent = audit.get('stated_intent', 'No reasoning provided.')
-                contribution = audit.get('contribution', 0)
-                endowment = audit.get('endowment', parameters.ENDOWMENT_STAGE_1)
-                
-                comment = self._generate_gossip_statement(
-                    source_id=audit['source'],
-                    target_id=audit['target'],
-                    score=audit['score'],
-                    stated_intent=stated_intent,
-                    contribution=contribution,
-                    endowment=endowment
-                )
-                audit['reasoning'] = comment
-            else:
-                audit['reasoning'] = "acted inconsistently with their stated intent"
-
         self.gossip_bulletin = selected_audits
         return self.gossip_bulletin
 
-    def _generate_gossip_statement(self, source_id, target_id, score, stated_intent, contribution, endowment):
-        """
-        Generate a gossip statement about target agent's behavioral inconsistency.
-        """
-        sc = get_scenario_config(parameters.SCENARIO)
-        currency_name = sc['currency_name']
-        
-        prompt = f"""You are formulating a piece of social gossip about Agent {target_id} based on an observation by Agent {source_id}.
 
-Observation Details:
-- Agent {target_id}'s stated intent: "{stated_intent}"
-- Agent {target_id}'s actual contribution: {contribution} / {endowment} {currency_name}
-- Behavioral Consistency Score assigned by Agent {source_id}: {score}/10 (where 10 is perfectly consistent, and 1 is highly inconsistent/hypocritical)
-
-Task: Write a concise, natural third-person comment (at most 15 words) that a participant in the experiment might gossip about this behavior. 
-Do NOT mention any specific agent IDs or numbers in the comment. Use terms like "the target" or "them".
-Examples of comments:
-- "promised to contribute fully but contributed almost nothing"
-- "claimed they would cooperate but kept all their tokens"
-- "stated they would help the group but defaulted on their word"
-
-Return ONLY the plain-text comment. No JSON, no quote marks, no greeting, no explanation. Just the direct comment sentence."""
-
-        try:
-            response = self.api_client.send_request(
-                model_name=self.api_client.deployment_name,
-                prompt=prompt,
-                max_tokens=64,
-                temperature=0.7,
-            )
-            comment = response.strip().strip('"').strip("'").strip()
-            return comment
-        except Exception as e:
-            logger.warning(f"Failed to generate gossip statement: {e}")
-            return "acted inconsistently with their stated intent"
 
     def get_gossip_for_agent(self, agent):
         """
