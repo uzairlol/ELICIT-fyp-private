@@ -317,7 +317,7 @@ class Agent:
             model_name=self.api_client.deployment_name,
             prompt=prompt,
             response_format={"type": "json_object"},
-            max_tokens=2250,
+            max_tokens=4096,
             temperature=temperature,
             top_p=top_p
         )
@@ -340,7 +340,7 @@ class Agent:
                 model_name=self.api_client.deployment_name,
                 prompt=repair_prompt,
                 response_format={"type": "json_object"},
-                max_tokens=2250,
+                max_tokens=4096,
                 temperature=temperature,
                 top_p=top_p
             )
@@ -358,7 +358,7 @@ class Agent:
                 model_name=self.api_client.deployment_name,
                 prompt=_semantic_repair_prompt(prompt, "Punishment and Reward Choice"),
                 response_format={"type": "json_object"},
-                max_tokens=2250,
+                max_tokens=4096,
                 temperature=temperature,
                 top_p=top_p
             )
