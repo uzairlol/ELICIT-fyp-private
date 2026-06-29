@@ -485,6 +485,7 @@ class Environment:
                 'punishment_parser_meta': getattr(agent, 'punishment_parser_meta', {}),
                 'reputation': round(agent.reputation, 2),            # Phase 2
                 'tom_scores': {str(k): round(v, 2) for k, v in agent.tom_scores.items()},  # Phase 2
+                'tom_audit_log': getattr(agent, 'tom_audit_log', []), # Phase 2
                 'rank': f"{rank} out of {total_agents}",
                 'subsidy': getattr(agent, 'last_subsidy', 0), # Phase 4
                 'climate_damage_taken_round': getattr(agent, 'climate_damage_taken_round', 0.0),
