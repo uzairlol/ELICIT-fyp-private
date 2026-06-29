@@ -45,7 +45,7 @@ class Environment:
         self.democracy_module = DemocracyModule(api_client) if (api_client and parameters.DEMOCRACY_ENABLED) else None
         self.subsidy_module = SubsidyModule() if parameters.SUBSIDY_ENABLED else None
         self.ldf_module = LossDamageFund() if parameters.LDF_ENABLED else None
-        self.gossip_module = GossipModule() if parameters.GOSSIP_ENABLED else None
+        self.gossip_module = GossipModule(api_client) if (api_client and parameters.GOSSIP_ENABLED) else None
 
     def run_simulation(self):
         """
@@ -103,11 +103,22 @@ class Environment:
                     evaluator.tom_scores[target_id] = score
                     incoming_scores[target_id].append(score)
                     if self.gossip_module:
+                        target_agent = next((a for a in self.agents if a.agent_id == target_id), None)
+                        stated_intent = target_agent.contribution_reasoning if target_agent else ""
+                        contribution = target_agent.contribution if target_agent else 0
+                        endowment = (
+                            target_agent.get_stage1_contribution_cap()
+                            if (target_agent and hasattr(target_agent, 'get_stage1_contribution_cap'))
+                            else parameters.ENDOWMENT_STAGE_1
+                        )
                         all_audits_this_round.append({
                             'source': evaluator.agent_id,
                             'target': target_id,
                             'score': score,
-                            'reasoning': reasoning
+                            'reasoning': reasoning,
+                            'stated_intent': stated_intent,
+                            'contribution': contribution,
+                            'endowment': endowment
                         })
 
         # Update each agent's reputation as the average of all incoming scores
