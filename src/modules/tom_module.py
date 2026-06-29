@@ -63,14 +63,16 @@ class TomModule:
             scores[target.agent_id] = {'score': score, 'reasoning': reasoning}
 
             if getattr(parameters, 'TOM_VERBOSE', False):
+                reasoning_str = f" - \"{reasoning}\"" if reasoning else ""
                 logger.info(
                     f"[ToM] Agent {evaluating_agent.agent_id} scored Agent {target.agent_id}: "
-                    f"{score:.1f}/10"
+                    f"{score:.1f}/10{reasoning_str}"
                 )
             else:
+                reasoning_str = f" - \"{reasoning}\"" if reasoning else ""
                 logger.debug(
                     f"[ToM Audit] Agent {evaluating_agent.agent_id} scored Agent {target.agent_id}: "
-                    f"{score:.1f}/10"
+                    f"{score:.1f}/10{reasoning_str}"
                 )
 
             evaluating_agent.tom_audit_log.append({
