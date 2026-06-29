@@ -138,7 +138,7 @@ class Environment:
                     for tid, score in sorted(agent.tom_scores.items())
                 )
                 logger.info(
-                    f"[ToM] Agent {agent.agent_id} published trust scores → [{published}]"
+                    f"[ToM] Agent {agent.agent_id} published trust scores -> [{published}]"
                 )
         
         if self.gossip_module and self.gossip_module.gossip_bulletin:

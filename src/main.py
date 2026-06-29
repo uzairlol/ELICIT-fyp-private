@@ -20,7 +20,7 @@ def setup_logging():
     os.makedirs(log_dir, exist_ok=True)
     debug_log_path = os.path.join(log_dir, 'debug.log')
     
-    fh, ch = logging.FileHandler(debug_log_path), logging.StreamHandler()
+    fh, ch = logging.FileHandler(debug_log_path, encoding='utf-8'), logging.StreamHandler()
     fh.setLevel(logging.INFO)
     ch.setLevel(logging.INFO)
     

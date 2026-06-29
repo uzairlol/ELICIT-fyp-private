@@ -109,7 +109,7 @@ class DemocracyModule:
             applied = self._apply_rule(winning_proposal)
             if applied:
                 logger.info(
-                    f"Rule applied: {winning_proposal['rule']} → {winning_proposal['new_value']}"
+                    f"Rule applied: {winning_proposal['rule']} -> {winning_proposal['new_value']}"
                 )
 
         logger.info(f"--- End of Constitutional Session ---")
@@ -193,7 +193,7 @@ class DemocracyModule:
                     agent.explored_params.add(rule) # Mark as explored
                     logger.info(
                         f"Agent {agent.agent_id} proposes: "
-                        f"{rule} → {new_val}  (reason: {validated.get('reason','')[:60]})"
+                        f"{rule} -> {new_val}  (reason: {validated.get('reason','')[:60]})"
                     )
         return proposals
 
@@ -275,12 +275,12 @@ Respond ONLY with valid JSON in this exact format:
         proposal_lines = []
         for i, p in enumerate(proposals):
             line = (
-                f"  [{i}] {p['rule']} → {p['new_value']} "
+                f"  [{i}] {p['rule']} -> {p['new_value']} "
                 f"(proposed by Agent {p.get('proposer','?')}): {p.get('reason','')}"
             )
             # Append oracle annotation if available
             if oracle_annotations and i < len(oracle_annotations):
-                line += f"\n      📊 Oracle: {oracle_annotations[i]}"
+                line += f"\n      [Oracle]: {oracle_annotations[i]}"
             proposal_lines.append(line)
 
         proposals_str = "\n".join(proposal_lines)

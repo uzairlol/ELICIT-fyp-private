@@ -182,8 +182,8 @@ class Oracle:
             )
 
         else:
-            return f"{rule} {old_val}→{new_val}: Oracle has no model for this rule."
+            return f"{rule} {old_val}->{new_val}: Oracle has no model for this rule."
 
         return (
-            f"{rule} {old_val}→{new_val}: {rationale}"
+            f"{rule} {old_val}->{new_val}: {rationale}"
         )
